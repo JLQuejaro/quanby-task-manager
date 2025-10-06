@@ -47,7 +47,7 @@ export function useTasks() {
     },
   });
 
-  const toggleCompleteMutation = useMutation({
+    const toggleCompleteMutation = useMutation({
     mutationFn: ({ id, completed }: { id: number; completed: boolean }) =>
       tasksApi.toggleComplete(id, completed),
     onSuccess: () => {
@@ -58,6 +58,11 @@ export function useTasks() {
     },
   });
 
+  // Wrapper function to match expected signature
+  const toggleComplete = (id: number, completed: boolean) => {
+    toggleCompleteMutation.mutate({ id, completed });
+  };
+
   return {
     tasks,
     isLoading,
@@ -65,6 +70,6 @@ export function useTasks() {
     createTask: createMutation.mutate,
     updateTask: updateMutation.mutate,
     deleteTask: deleteMutation.mutate,
-    toggleComplete: toggleCompleteMutation.mutate,
+    toggleComplete,
   };
 }

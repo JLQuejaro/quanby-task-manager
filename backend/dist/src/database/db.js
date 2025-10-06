@@ -41,6 +41,12 @@ const postgres_js_1 = require("drizzle-orm/postgres-js");
 const postgres_1 = __importDefault(require("postgres"));
 const schema = __importStar(require("./schema"));
 const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    console.error('❌ DATABASE_URL is not defined!');
+    console.error('Current env:', process.env);
+    throw new Error('DATABASE_URL environment variable is required');
+}
+console.log('✅ Database connection string loaded:', connectionString.replace(/:[^:]*@/, ':****@'));
 const client = (0, postgres_1.default)(connectionString);
 exports.db = (0, postgres_js_1.drizzle)(client, { schema });
 //# sourceMappingURL=db.js.map

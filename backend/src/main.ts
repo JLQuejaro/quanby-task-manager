@@ -1,9 +1,18 @@
+import { config } from 'dotenv';
+config(); // Load .env file FIRST before any other imports
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Debug: Check if DATABASE_URL is loaded
+  console.log('🔍 DATABASE_URL loaded:', process.env.DATABASE_URL ? '✅ Yes' : '❌ No');
+  if (process.env.DATABASE_URL) {
+    console.log('🔗 Connection:', process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@'));
+  }
+  
   const app = await NestFactory.create(AppModule);
   
   // Enable CORS

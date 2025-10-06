@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Logo } from '@/components/shared/Logo';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -47,9 +46,15 @@ export function RegisterForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Logo */}
-        <div className="flex justify-center">
-          <Logo />
+        {/* Logo - Horizontal Layout */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#4169E1]">
+            <CheckSquare className="h-7 w-7 text-white" strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Quanby</h1>
+            <p className="text-sm text-gray-600">Task Manager</p>
+          </div>
         </div>
 
         {/* Tagline */}
@@ -58,17 +63,17 @@ export function RegisterForm() {
         </p>
 
         {/* Register Form */}
-        <div className="rounded-2xl bg-white p-8 shadow-lg">
+        <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
             {/* Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="name" className="text-sm font-medium text-gray-900">
                 Full Name
               </Label>
               <div className="relative">
@@ -79,7 +84,7 @@ export function RegisterForm() {
                   placeholder="Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
@@ -87,7 +92,7 @@ export function RegisterForm() {
 
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-900">
                 Email
               </Label>
               <div className="relative">
@@ -98,7 +103,7 @@ export function RegisterForm() {
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
@@ -106,7 +111,7 @@ export function RegisterForm() {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-900">
                 Password
               </Label>
               <div className="relative">
@@ -117,7 +122,7 @@ export function RegisterForm() {
                   placeholder="Password (min 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 h-11"
                   required
                 />
                 <button
@@ -136,7 +141,7 @@ export function RegisterForm() {
 
             {/* Confirm Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-900">
                 Confirm Password
               </Label>
               <div className="relative">
@@ -147,7 +152,7 @@ export function RegisterForm() {
                   placeholder="Confirm Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11"
                   required
                 />
               </div>
@@ -156,7 +161,7 @@ export function RegisterForm() {
             {/* Register Button */}
             <Button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90"
+              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium"
               disabled={isLoading}
             >
               {isLoading ? 'Creating account...' : 'Register'}
@@ -166,7 +171,7 @@ export function RegisterForm() {
           {/* Login Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link href="/login" className="font-medium text-[#4169E1] hover:underline">
               Login here
             </Link>
           </p>
