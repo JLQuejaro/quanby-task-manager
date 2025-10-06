@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CardTitle className="text-sm font-medium dark:text-white">Completed</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <CardTitle className="text-sm font-medium dark:text-white">In Progress</CardTitle>
               <Clock className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium dark:text-white">Pending</CardTitle>
               <AlertCircle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -142,11 +142,11 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Task Progress</CardTitle>
+              <CardTitle className="dark:text-white">Task Progress</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Completed</span>
+                <span className="text-sm dark:text-gray-300">Completed</span>
                 <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 rounded-full">
                   {stats.completed} / {stats.total}
                 </Badge>
@@ -160,11 +160,11 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="text-center">
                   <div className="text-lg font-semibold text-blue-600">{stats.inProgress}</div>
-                  <div className="text-xs text-gray-500">In Progress</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">In Progress</div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-orange-600">{stats.pending}</div>
-                  <div className="text-xs text-gray-500">Pending</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Pending</div>
                 </div>
               </div>
             </CardContent>
@@ -172,7 +172,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Priority Distribution</CardTitle>
+              <CardTitle className="dark:text-white">Priority Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                   const count = tasks.filter(t => t.priority === priority).length;
                   return (
                     <div key={priority} className="flex items-center justify-between">
-                      <span className="text-sm">{label}</span>
+                      <span className="text-sm dark:text-gray-300">{label}</span>
                       <Badge variant="outline" className={`${color} rounded-full`}>{count}</Badge>
                     </div>
                   );
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Tasks</CardTitle>
+              <CardTitle className="dark:text-white">Tasks</CardTitle>
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
