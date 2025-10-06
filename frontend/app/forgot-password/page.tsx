@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
                 
                 <Button
                   onClick={() => router.push('/login')}
-                  className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC]"
+                  className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
                 >
                   Back to Login
                 </Button>
@@ -135,7 +135,7 @@ export default function ForgotPasswordPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-10 h-11 rounded-xl"
                   required
                 />
               </div>
@@ -143,7 +143,7 @@ export default function ForgotPasswordPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200">
                 <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
@@ -151,7 +151,7 @@ export default function ForgotPasswordPage() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium"
+              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium rounded-xl"
               disabled={isLoading}
             >
               {isLoading ? 'Sending...' : 'Send Reset Link'}

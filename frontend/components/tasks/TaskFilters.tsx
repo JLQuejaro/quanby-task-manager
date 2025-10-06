@@ -32,6 +32,7 @@ export function TaskFilters({ activeFilter, onFilterChange, taskCounts }: TaskFi
           variant={activeFilter === filter.id ? 'default' : 'outline'}
           onClick={() => onFilterChange(filter.id)}
           className={cn(
+            'rounded-xl',
             activeFilter === filter.id && 'bg-[#4169E1] hover:bg-[#3558CC]'
           )}
         >

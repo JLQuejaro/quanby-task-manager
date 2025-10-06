@@ -13,6 +13,7 @@ export default function TasksPage() {
   const { tasks, isLoading, createTask, updateTask, deleteTask, toggleComplete } = useTasks();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleCreateTask = (taskData: Partial<Task>) => {
     if (editingTask) {
@@ -44,22 +45,35 @@ export default function TasksPage() {
     );
   }
 
+  // Filter tasks based on search
+  const filteredTasks = searchTerm.trim()
+    ? tasks.filter(task => 
+        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    : tasks;
+
   return (
-    <div className="flex-1 overflow-y-auto">
-      <Header title="All Tasks" />
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+      <Header 
+        title="All Tasks" 
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
 
       <div className="p-6 space-y-6">
         {/* Header with New Task Button */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">All Tasks</h1>
-            <p className="text-gray-600 mt-1">
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} total
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
+              {searchTerm.trim() && ` found`}
             </p>
           </div>
           <Button
             onClick={() => setIsCreateDialogOpen(true)}
-            className="bg-[#4169E1] hover:bg-[#3558CC]"
+            className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
           >
             <Plus className="h-5 w-5 mr-2" />
             New Task
@@ -68,7 +82,7 @@ export default function TasksPage() {
 
         {/* Task List */}
         <TaskList
-          tasks={tasks}
+          tasks={filteredTasks}
           onToggleComplete={toggleComplete}
           onEdit={handleEditTask}
           onDelete={deleteTask}

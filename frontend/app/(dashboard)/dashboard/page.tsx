@@ -87,23 +87,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <Header title="Dashboard" />
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+      <Header 
+        title="Dashboard" 
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
 
       <div className="p-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+              <CardTitle className="text-sm font-medium dark:text-white">Total Tasks</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="text-2xl font-bold dark:text-white">{stats.total}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -113,7 +117,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">In Progress</CardTitle>
               <Clock className="h-4 w-4 text-blue-600" />
@@ -123,7 +127,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending</CardTitle>
               <AlertCircle className="h-4 w-4 text-orange-600" />
@@ -136,14 +140,14 @@ export default function DashboardPage() {
 
         {/* Task Progress & Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle>Task Progress</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Completed</span>
-                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
+                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 rounded-full">
                   {stats.completed} / {stats.total}
                 </Badge>
               </div>
@@ -166,25 +170,22 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle>Priority Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {[
-                  { priority: 'high', label: 'High Priority', icon: '🔴', color: 'text-red-600' },
-                  { priority: 'medium', label: 'Medium Priority', icon: '🟡', color: 'text-yellow-600' },
-                  { priority: 'low', label: 'Low Priority', icon: '🟢', color: 'text-green-600' }
-                ].map(({ priority, label, icon }) => {
+                  { priority: 'high', label: 'High Priority', color: 'bg-red-100 text-red-700 border-red-200' },
+                  { priority: 'medium', label: 'Medium Priority', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+                  { priority: 'low', label: 'Low Priority', color: 'bg-green-100 text-green-700 border-green-200' }
+                ].map(({ priority, label, color }) => {
                   const count = tasks.filter(t => t.priority === priority).length;
                   return (
                     <div key={priority} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span>{icon}</span>
-                        <span className="text-sm">{label}</span>
-                      </div>
-                      <Badge variant="outline">{count}</Badge>
+                      <span className="text-sm">{label}</span>
+                      <Badge variant="outline" className={`${color} rounded-full`}>{count}</Badge>
                     </div>
                   );
                 })}
@@ -194,17 +195,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Task Management */}
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Tasks</CardTitle>
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
-                className="bg-[#4169E1] hover:bg-[#3558CC]"
+                className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>
+              
             </div>
             
             <div className="flex items-center gap-4 mt-4 flex-wrap">
@@ -214,7 +216,7 @@ export default function DashboardPage() {
                   placeholder="Search tasks..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 rounded-xl"
                 />
               </div>
               

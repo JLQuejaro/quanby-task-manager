@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, Eye, EyeOff, CheckSquare } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckSquare, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 
 export function LoginForm() {
@@ -14,6 +15,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +31,21 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      {/* Theme Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 rounded-xl"
+      >
+        {theme === 'dark' ? (
+          <Sun className="h-5 w-5" />
+        ) : (
+          <Moon className="h-5 w-5" />
+        )}
+      </Button>
+
       <div className="w-full max-w-md space-y-8">
         {/* Logo - Horizontal Layout */}
         <div className="flex items-center justify-center gap-3">
@@ -37,22 +53,22 @@ export function LoginForm() {
             <CheckSquare className="h-7 w-7 text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Quanby</h1>
-            <p className="text-sm text-gray-600">Task Manager</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quanby</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Task Manager</p>
           </div>
         </div>
 
         {/* Tagline */}
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-600 dark:text-gray-400">
           Organize your tasks efficiently.
         </p>
 
         {/* Login Form */}
-        <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
+        <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm border border-gray-200 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-900">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-900 dark:text-white">
                 Email
               </Label>
               <div className="relative">
@@ -71,7 +87,7 @@ export function LoginForm() {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-900">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-900 dark:text-white">
                 Password
               </Label>
               <div className="relative">
@@ -121,10 +137,10 @@ export function LoginForm() {
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">or</span>
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">or</span>
               </div>
             </div>
 
@@ -157,7 +173,7 @@ export function LoginForm() {
           </form>
 
           {/* Register Link */}
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
             <Link href="/register" className="font-medium text-[#4169E1] hover:underline">
               Register here

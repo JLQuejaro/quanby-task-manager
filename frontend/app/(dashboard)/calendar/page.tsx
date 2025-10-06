@@ -121,7 +121,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
       <Header title="Calendar" />
 
       <div className="p-6">
@@ -130,7 +130,7 @@ export default function CalendarPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Month Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
+              <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold">{monthStats.total}</div>
@@ -138,7 +138,7 @@ export default function CalendarPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{monthStats.completed}</div>
@@ -146,7 +146,7 @@ export default function CalendarPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">{monthStats.pending}</div>
@@ -154,7 +154,7 @@ export default function CalendarPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-600">{monthStats.overdue}</div>
@@ -165,7 +165,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Calendar */}
-            <Card>
+            <Card className="rounded-2xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>
@@ -176,6 +176,7 @@ export default function CalendarPage() {
                       variant="outline" 
                       size="sm"
                       onClick={goToPreviousMonth}
+                      className="rounded-xl"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -183,6 +184,7 @@ export default function CalendarPage() {
                       variant="outline" 
                       size="sm"
                       onClick={goToNextMonth}
+                      className="rounded-xl"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -256,7 +258,7 @@ export default function CalendarPage() {
 
           {/* Selected Date Tasks */}
           <div className="space-y-6">
-            <Card>
+            <Card className="rounded-2xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
@@ -265,7 +267,7 @@ export default function CalendarPage() {
                   <Button 
                     size="sm" 
                     onClick={() => setIsCreateDialogOpen(true)}
-                    className="bg-[#4169E1] hover:bg-[#3558CC]"
+                    className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add
@@ -280,7 +282,7 @@ export default function CalendarPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="mt-2"
+                        className="mt-2 rounded-xl"
                         onClick={() => setIsCreateDialogOpen(true)}
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -301,7 +303,7 @@ export default function CalendarPage() {
 
             {/* Quick Stats for Selected Date */}
             {selectedDateTasks.length > 0 && (
-              <Card>
+              <Card className="rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-lg">Day Summary</CardTitle>
                 </CardHeader>
@@ -309,17 +311,17 @@ export default function CalendarPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Total Tasks</span>
-                      <Badge variant="outline">{selectedDateTasks.length}</Badge>
+                      <Badge variant="outline" className="rounded-full">{selectedDateTasks.length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Completed</span>
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 rounded-full">
                         {selectedDateTasks.filter(task => task.completed).length}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Pending</span>
-                      <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+                      <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 rounded-full">
                         {selectedDateTasks.filter(task => !task.completed).length}
                       </Badge>
                     </div>

@@ -91,21 +91,21 @@ export default function AnalyticsPage() {
   const performance = getPerformanceMessage();
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
       <Header title="Analytics" />
       
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="text-gray-600">Track your productivity and task performance</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400">Track your productivity and task performance</p>
           </div>
           <div className="text-right">
             <div className={`text-xl font-semibold ${performance.color}`}>
               {performance.message}
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               Overall completion: {analytics.completionRate.toFixed(1)}%
             </div>
           </div>
@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
+          <Card className="p-4 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Total Tasks</span>
               <BarChart3 className="h-4 w-4 text-gray-400" />
@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
             <div className="text-2xl font-bold text-gray-900">{analytics.totalTasks}</div>
           </Card>
 
-          <Card className="p-4">
+          <Card className="p-4 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Completion Rate</span>
               <Target className="h-4 w-4 text-gray-400" />
@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
             </div>
           </Card>
 
-          <Card className="p-4">
+          <Card className="p-4 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">This Week</span>
               <Calendar className="h-4 w-4 text-gray-400" />
@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
             </p>
           </Card>
 
-          <Card className="p-4">
+          <Card className="p-4 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Overdue</span>
               <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Task Status Distribution */}
-          <Card className="p-6">
+          <Card className="p-6 rounded-2xl">
             <div className="flex items-center gap-2 mb-4">
               <CheckCircle2 className="h-5 w-5 text-[#4169E1]" />
               <h3 className="font-semibold text-gray-900">Task Status Distribution</h3>
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Priority Analysis */}
-          <Card className="p-6">
+          <Card className="p-6 rounded-2xl">
             <div className="flex items-center gap-2 mb-4">
               <Award className="h-5 w-5 text-[#4169E1]" />
               <h3 className="font-semibold text-gray-900">Priority Analysis</h3>
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Time-based Insights */}
-          <Card className="p-6">
+          <Card className="p-6 rounded-2xl">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="h-5 w-5 text-[#4169E1]" />
               <h3 className="font-semibold text-gray-900">Time-based Insights</h3>
@@ -300,7 +300,7 @@ export default function AnalyticsPage() {
 
           {/* Recommendations */}
           {(analytics.overdueTasks > 0 || analytics.highPriorityRate < 50) && (
-            <Card className="p-6">
+            <Card className="p-6 rounded-2xl">
               <div className="flex items-center gap-2 mb-4 text-orange-600">
                 <AlertTriangle className="h-5 w-5" />
                 <h3 className="font-semibold">Recommendations</h3>

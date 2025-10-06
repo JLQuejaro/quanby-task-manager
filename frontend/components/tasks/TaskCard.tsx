@@ -25,7 +25,7 @@ interface TaskCardProps {
 export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) {
   return (
     <Card className={cn(
-      'p-4 hover:shadow-md transition-shadow',
+      'p-4 hover:shadow-md transition-shadow rounded-xl',
       task.completed && 'opacity-60'
     )}>
       <div className="flex items-start gap-3">
@@ -54,11 +54,11 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardP
             {/* More Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border shadow-md">
+              <DropdownMenuContent align="end" className="bg-white border shadow-md rounded-xl">
                 <DropdownMenuItem onClick={() => onEdit(task)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit

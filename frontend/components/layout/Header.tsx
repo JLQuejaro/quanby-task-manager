@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Settings, Search, User, LogOut } from 'lucide-react';
+import { Bell, Settings, Search, User, LogOut, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,18 +14,23 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface HeaderProps {
   title: string;
   showSearch?: boolean;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-export function Header({ title, showSearch = true }: HeaderProps) {
+export function Header({ title, showSearch = true, searchValue = '', onSearchChange }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const [hasNotifications] = useState(true);
+  const [localSearchValue, setLocalSearchValue] = useState(searchValue);
 
   const initials = user?.name
     .split(' ')
@@ -45,11 +50,19 @@ export function Header({ title, showSearch = true }: HeaderProps) {
     router.push('/notifications');
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearchValue(value);
+    if (onSearchChange) {
+      onSearchChange(value);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-10 border-b bg-white">
+    <header className="sticky top-0 z-10 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h1>
         </div>
 
         <div className="flex items-center gap-4">
@@ -60,6 +73,8 @@ export function Header({ title, showSearch = true }: HeaderProps) {
               <Input
                 type="search"
                 placeholder="Search tasks..."
+                value={onSearchChange ? searchValue : localSearchValue}
+                onChange={handleSearchChange}
                 className="pl-10 rounded-xl"
               />
             </div>
@@ -78,11 +93,25 @@ export function Header({ title, showSearch = true }: HeaderProps) {
             )}
           </Button>
 
+          {/* Theme Toggle */}
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-xl"
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </Button>
+
           {/* Settings */}
           <Button 
             variant="ghost" 
             size="icon"
-            className="hover:bg-gray-100 transition-colors rounded-xl"
+            className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-xl"
             onClick={handleSettings}
           >
             <Settings className="h-5 w-5" />
@@ -93,7 +122,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="relative h-10 w-10 rounded-full hover:bg-gray-100 transition-colors"
+                className="relative h-10 w-10 rounded-full hover:bg-blue-50 hover:ring-2 hover:ring-[#4169E1]/20 transition-all"
               >
                 <Avatar>
                   <AvatarFallback className="bg-[#4169E1] text-white font-semibold">
@@ -104,7 +133,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               align="end" 
-              className="w-64 bg-white border shadow-lg rounded-xl"
+              className="w-64 bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-lg rounded-xl"
             >
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
@@ -113,25 +142,31 @@ export function Header({ title, showSearch = true }: HeaderProps) {
                     {user?.email}
                   </p>
                   <div className="mt-2">
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs rounded-full">
                       Overall completion: 0.0%
                     </Badge>
                   </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleProfile}>
+              <DropdownMenuItem 
+                onClick={handleProfile}
+                className="cursor-pointer hover:bg-blue-50 focus:bg-blue-50 hover:text-[#4169E1] focus:text-[#4169E1]"
+              >
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSettings}>
+              <DropdownMenuItem 
+                onClick={handleSettings}
+                className="cursor-pointer hover:bg-blue-50 focus:bg-blue-50 hover:text-[#4169E1] focus:text-[#4169E1]"
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={logout} 
-                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                className="cursor-pointer text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout

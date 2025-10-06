@@ -90,7 +90,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] bg-white z-50">
+      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800 z-50 rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {editTask ? 'Edit Task' : 'Create New Task'}
@@ -109,7 +109,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full"
+              className="w-full rounded-xl"
             />
           </div>
 
@@ -124,7 +124,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full resize-none"
+              className="w-full resize-none rounded-xl"
             />
           </div>
 
@@ -134,23 +134,23 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               Priority <span className="text-red-500">*</span>
             </Label>
             <Select value={priority} onValueChange={(value: any) => setPriority(value)}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full rounded-xl">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
-              <SelectContent className="bg-white z-[100]">
-                <SelectItem value="low">
+              <SelectContent className="bg-white z-[100] rounded-xl">
+                <SelectItem value="low" className="rounded-lg">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-green-500"></span>
                     Low
                   </div>
                 </SelectItem>
-                <SelectItem value="medium">
+                <SelectItem value="medium" className="rounded-lg">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
                     Medium
                   </div>
                 </SelectItem>
-                <SelectItem value="high">
+                <SelectItem value="high" className="rounded-lg">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-red-500"></span>
                     High
@@ -172,7 +172,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full cursor-text"
+                  className="w-full cursor-text rounded-xl"
                   min={new Date().toISOString().split('T')[0]}
                   placeholder="mm/dd/yyyy"
                 />
@@ -183,7 +183,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
                   type="time"
                   value={deadlineTime}
                   onChange={(e) => setDeadlineTime(e.target.value)}
-                  className="w-full cursor-text"
+                  className="w-full cursor-text rounded-xl"
                   placeholder="HH:MM"
                 />
               </div>
@@ -195,13 +195,13 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               type="button" 
               variant="outline" 
               onClick={handleClose}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto rounded-xl"
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
-              className="bg-[#4169E1] hover:bg-[#3558CC] w-full sm:w-auto"
+              className="bg-[#4169E1] hover:bg-[#3558CC] w-full sm:w-auto rounded-xl"
               disabled={!title.trim()}
             >
               {editTask ? 'Update Task' : 'Create Task'}
