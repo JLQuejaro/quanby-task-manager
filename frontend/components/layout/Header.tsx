@@ -25,7 +25,7 @@ interface HeaderProps {
 export function Header({ title, showSearch = true }: HeaderProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [hasNotifications] = useState(true); // You can connect this to real notifications later
+  const [hasNotifications] = useState(true);
 
   const initials = user?.name
     .split(' ')
@@ -69,7 +69,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative"
+            className="relative hover:bg-gray-100 transition-colors"
             onClick={handleNotifications}
           >
             <Bell className="h-5 w-5" />
@@ -82,6 +82,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="icon"
+            className="hover:bg-gray-100 transition-colors"
             onClick={handleSettings}
           >
             <Settings className="h-5 w-5" />
@@ -90,7 +91,10 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button 
+                variant="ghost" 
+                className="relative h-10 w-10 rounded-full hover:bg-gray-100 transition-colors"
+              >
                 <Avatar>
                   <AvatarFallback className="bg-[#4169E1] text-white font-semibold">
                     {initials}

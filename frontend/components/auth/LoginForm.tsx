@@ -108,6 +108,16 @@ export function LoginForm() {
               {isLoading ? 'Logging in...' : 'Login'}
             </Button>
 
+            {/* Forgot Password Link */}
+            <div className="text-center">
+              <Link 
+                href="/forgot-password" 
+                className="text-sm font-medium text-[#4169E1] hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
