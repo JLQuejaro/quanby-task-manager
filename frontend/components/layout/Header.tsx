@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Settings, Search, User } from 'lucide-react';
+import { Bell, Settings, Search, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,7 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface HeaderProps {
   title: string;
@@ -21,12 +24,26 @@ interface HeaderProps {
 
 export function Header({ title, showSearch = true }: HeaderProps) {
   const { user, logout } = useAuth();
+  const router = useRouter();
+  const [hasNotifications] = useState(true); // You can connect this to real notifications later
 
   const initials = user?.name
     .split(' ')
     .map((n) => n[0])
     .join('')
     .toUpperCase();
+
+  const handleProfile = () => {
+    router.push('/profile');
+  };
+
+  const handleSettings = () => {
+    router.push('/settings');
+  };
+
+  const handleNotifications = () => {
+    router.push('/notifications');
+  };
 
   return (
     <header className="sticky top-0 z-10 border-b bg-white">
@@ -49,13 +66,24 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           )}
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={handleNotifications}
+          >
             <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
+            {hasNotifications && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+            )}
           </Button>
 
           {/* Settings */}
-          <Button variant="ghost" size="icon">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleSettings}
+          >
             <Settings className="h-5 w-5" />
           </Button>
 
@@ -64,30 +92,43 @@ export function Header({ title, showSearch = true }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar>
-                  <AvatarFallback className="bg-primary text-white">
+                  <AvatarFallback className="bg-[#4169E1] text-white font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
+            <DropdownMenuContent 
+              align="end" 
+              className="w-64 bg-white border shadow-lg"
+            >
+              <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="text-sm font-medium leading-none">{user?.name}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                  <div className="mt-2">
+                    <Badge variant="outline" className="text-xs">
+                      Overall completion: 0.0%
+                    </Badge>
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfile}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSettings}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive">
+              <DropdownMenuItem 
+                onClick={logout} 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>
@@ -98,6 +139,3 @@ export function Header({ title, showSearch = true }: HeaderProps) {
     </header>
   );
 }
-
-// Add this import at the top
-import { LogOut } from 'lucide-react';
