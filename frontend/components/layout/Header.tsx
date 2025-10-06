@@ -60,7 +60,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
               <Input
                 type="search"
                 placeholder="Search tasks..."
-                className="pl-10"
+                className="pl-10 rounded-xl"
               />
             </div>
           )}
@@ -69,7 +69,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative hover:bg-gray-100 transition-colors"
+            className="relative hover:bg-gray-100 transition-colors rounded-xl"
             onClick={handleNotifications}
           >
             <Bell className="h-5 w-5" />
@@ -82,7 +82,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
           <Button 
             variant="ghost" 
             size="icon"
-            className="hover:bg-gray-100 transition-colors"
+            className="hover:bg-gray-100 transition-colors rounded-xl"
             onClick={handleSettings}
           >
             <Settings className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function Header({ title, showSearch = true }: HeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               align="end" 
-              className="w-64 bg-white border shadow-lg"
+              className="w-64 bg-white border shadow-lg rounded-xl"
             >
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">

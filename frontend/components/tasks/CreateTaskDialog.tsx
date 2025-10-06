@@ -33,29 +33,47 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [deadline, setDeadline] = useState('');
+  const [deadlineTime, setDeadlineTime] = useState('08:00');
 
   useEffect(() => {
     if (editTask) {
       setTitle(editTask.title);
       setDescription(editTask.description || '');
       setPriority(editTask.priority);
-      setDeadline(editTask.deadline ? editTask.deadline.split('T')[0] : '');
+      
+      if (editTask.deadline) {
+        const date = new Date(editTask.deadline);
+        setDeadline(date.toISOString().split('T')[0]);
+        setDeadlineTime(date.toTimeString().slice(0, 5));
+      } else {
+        setDeadline('');
+        setDeadlineTime('08:00');
+      }
     } else {
       setTitle('');
       setDescription('');
       setPriority('medium');
       setDeadline('');
+      setDeadlineTime('08:00');
     }
   }, [editTask, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    let deadlineISO: string | undefined;
+    if (deadline) {
+      const [hours, minutes] = deadlineTime.split(':');
+      const dateTime = new Date(deadline);
+      dateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      deadlineISO = dateTime.toISOString();
+    }
+
     onSubmit({
       title,
       description: description || undefined,
       priority,
-      deadline: deadline ? new Date(deadline).toISOString() : undefined,
+      deadline: deadlineISO,
     });
 
     handleClose();
@@ -66,6 +84,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
     setDescription('');
     setPriority('medium');
     setDeadline('');
+    setDeadlineTime('08:00');
     onClose();
   };
 
@@ -146,14 +165,29 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
             <Label htmlFor="deadline" className="text-sm font-medium">
               Deadline
             </Label>
-            <Input
-              id="deadline"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="w-full"
-              min={new Date().toISOString().split('T')[0]}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  id="deadline"
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full cursor-text"
+                  min={new Date().toISOString().split('T')[0]}
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+              <div>
+                <Input
+                  id="deadlineTime"
+                  type="time"
+                  value={deadlineTime}
+                  onChange={(e) => setDeadlineTime(e.target.value)}
+                  className="w-full cursor-text"
+                  placeholder="HH:MM"
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0 mt-6">

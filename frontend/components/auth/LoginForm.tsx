@@ -63,7 +63,7 @@ export function LoginForm() {
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-10 h-11 rounded-xl"
                   required
                 />
               </div>
@@ -82,7 +82,7 @@ export function LoginForm() {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-11"
+                  className="pl-10 pr-10 h-11 rounded-xl"
                   required
                 />
                 <button
@@ -102,7 +102,7 @@ export function LoginForm() {
             {/* Login Button */}
             <Button
               type="submit"
-              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium"
+              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium rounded-xl"
               disabled={isLoading}
             >
               {isLoading ? 'Logging in...' : 'Login'}
@@ -132,7 +132,7 @@ export function LoginForm() {
             <Button
               type="button"
               variant="outline"
-              className="w-full h-11 font-medium"
+              className="w-full h-11 font-medium rounded-xl"
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path

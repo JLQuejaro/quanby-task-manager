@@ -58,7 +58,7 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardP
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bg-white border shadow-md">
                 <DropdownMenuItem onClick={() => onEdit(task)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
