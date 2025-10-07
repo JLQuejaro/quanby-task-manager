@@ -18,4 +18,6 @@ export declare class AuthController {
             name: string;
         };
     }>;
+    googleAuth(req: any): Promise<void>;
+    googleAuthRedirect(req: any, res: any): Promise<void>;
 }

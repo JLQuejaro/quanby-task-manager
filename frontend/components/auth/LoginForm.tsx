@@ -30,6 +30,11 @@ export function LoginForm() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    // Redirect to backend Google OAuth endpoint
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/google`;
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
       {/* Theme Toggle Button */}
@@ -149,6 +154,7 @@ export function LoginForm() {
               type="button"
               variant="outline"
               className="w-full h-11 font-medium rounded-xl"
+              onClick={handleGoogleLogin}
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path

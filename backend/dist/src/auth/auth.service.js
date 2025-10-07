@@ -74,6 +74,21 @@ let AuthService = class AuthService {
             user: { id: user.id, email: user.email, name: user.name },
         };
     }
+    async googleLogin(googleUser) {
+        let [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, googleUser.email));
+        if (!user) {
+            [user] = await db_1.db.insert(schema_1.users).values({
+                email: googleUser.email,
+                name: googleUser.name,
+                password: await bcrypt.hash(Math.random().toString(36), 10),
+            }).returning();
+        }
+        const payload = { sub: user.id, email: user.email };
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+            user: { id: user.id, email: user.email, name: user.name },
+        };
+    }
     async validateUser(userId) {
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
         if (!user)

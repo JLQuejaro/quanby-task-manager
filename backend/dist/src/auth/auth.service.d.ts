@@ -18,6 +18,14 @@ export declare class AuthService {
             name: string;
         };
     }>;
+    googleLogin(googleUser: any): Promise<{
+        access_token: string;
+        user: {
+            id: number;
+            email: string;
+            name: string;
+        };
+    }>;
     validateUser(userId: number): Promise<{
         id: number;
         email: string;
