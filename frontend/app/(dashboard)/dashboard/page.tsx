@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsDialog } from '@/components/shared/KeyboardShortcutsDialog';
 import { Header } from '@/components/layout/Header';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFilters } from '@/components/tasks/TaskFilters';
@@ -87,29 +89,25 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
-      <Header 
-        title="Dashboard" 
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
+    <div className="flex-1 overflow-y-auto">
+      <Header title="Dashboard" />
 
       <div className="p-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium dark:text-white">Total Tasks</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold dark:text-white">{stats.total}</div>
+              <div className="text-2xl font-bold">{stats.total}</div>
             </CardContent>
           </Card>
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium dark:text-white">Completed</CardTitle>
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -119,7 +117,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium dark:text-white">In Progress</CardTitle>
+              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
               <Clock className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
@@ -129,7 +127,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium dark:text-white">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending</CardTitle>
               <AlertCircle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -142,11 +140,11 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle className="dark:text-white">Task Progress</CardTitle>
+              <CardTitle>Task Progress</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm dark:text-gray-300">Completed</span>
+                <span className="text-sm">Completed</span>
                 <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 rounded-full">
                   {stats.completed} / {stats.total}
                 </Badge>
@@ -160,11 +158,11 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="text-center">
                   <div className="text-lg font-semibold text-blue-600">{stats.inProgress}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">In Progress</div>
+                  <div className="text-xs text-gray-500">In Progress</div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold text-orange-600">{stats.pending}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Pending</div>
+                  <div className="text-xs text-gray-500">Pending</div>
                 </div>
               </div>
             </CardContent>
@@ -172,7 +170,7 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle className="dark:text-white">Priority Distribution</CardTitle>
+              <CardTitle>Priority Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -184,7 +182,7 @@ export default function DashboardPage() {
                   const count = tasks.filter(t => t.priority === priority).length;
                   return (
                     <div key={priority} className="flex items-center justify-between">
-                      <span className="text-sm dark:text-gray-300">{label}</span>
+                      <span className="text-sm">{label}</span>
                       <Badge variant="outline" className={`${color} rounded-full`}>{count}</Badge>
                     </div>
                   );
@@ -198,7 +196,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="dark:text-white">Tasks</CardTitle>
+              <CardTitle>Tasks</CardTitle>
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
@@ -206,7 +204,6 @@ export default function DashboardPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>
-              
             </div>
             
             <div className="flex items-center gap-4 mt-4 flex-wrap">

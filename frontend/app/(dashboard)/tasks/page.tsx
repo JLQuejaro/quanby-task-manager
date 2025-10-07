@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsDialog } from '@/components/shared/KeyboardShortcutsDialog';
 import { Header } from '@/components/layout/Header';
 import { TaskList } from '@/components/tasks/TaskList';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
@@ -14,6 +16,30 @@ export default function TasksPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'n',
+      callback: () => setIsCreateDialogOpen(true),
+      preventDefault: true,
+    },
+    {
+      key: '/',
+      callback: () => {
+        const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+        searchInput?.focus();
+      },
+      preventDefault: true,
+    },
+    {
+      key: '?',
+      shiftKey: true,
+      callback: () => setShowShortcutsDialog(true),
+      preventDefault: true,
+    },
+  ]);
 
   const handleCreateTask = (taskData: Partial<Task>) => {
     if (editingTask) {
@@ -95,6 +121,12 @@ export default function TasksPage() {
         onClose={handleCloseDialog}
         onSubmit={handleCreateTask}
         editTask={editingTask}
+      />
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        open={showShortcutsDialog}
+        onClose={() => setShowShortcutsDialog(false)}
       />
     </div>
   );

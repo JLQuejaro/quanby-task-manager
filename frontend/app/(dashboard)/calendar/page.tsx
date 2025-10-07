@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsDialog } from '@/components/shared/KeyboardShortcutsDialog';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +12,7 @@ import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { useTasks } from '@/hooks/useTasks';
 import { Task } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, addMonths, subMonths } from 'date-fns';
 
 export default function CalendarPage() {
   const { tasks, createTask, updateTask, deleteTask, toggleComplete } = useTasks();
@@ -18,6 +20,40 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'n',
+      callback: () => setIsCreateDialogOpen(true),
+      preventDefault: true,
+    },
+    {
+      key: 'ArrowLeft',
+      callback: () => goToPreviousMonth(),
+      preventDefault: true,
+    },
+    {
+      key: 'ArrowRight',
+      callback: () => goToNextMonth(),
+      preventDefault: true,
+    },
+    {
+      key: 't',
+      callback: () => {
+        setSelectedDate(new Date());
+        setCurrentMonth(new Date());
+      },
+      preventDefault: true,
+    },
+    {
+      key: '?',
+      shiftKey: true,
+      callback: () => setShowShortcutsDialog(true),
+      preventDefault: true,
+    },
+  ]);
 
   // Group tasks by date
   const tasksByDate = useMemo(() => {
@@ -105,19 +141,11 @@ export default function CalendarPage() {
   };
 
   const goToPreviousMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() - 1);
-      return newDate;
-    });
+    setCurrentMonth(prev => subMonths(prev, 1));
   };
 
   const goToNextMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() + 1);
-      return newDate;
-    });
+    setCurrentMonth(prev => addMonths(prev, 1));
   };
 
   return (
@@ -133,8 +161,8 @@ export default function CalendarPage() {
               <Card className="rounded-2xl">
                 <CardContent className="p-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{monthStats.total}</div>
-                    <div className="text-sm text-gray-500">Total Tasks</div>
+                    <div className="text-2xl font-bold dark:text-white">{monthStats.total}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Total Tasks</div>
                   </div>
                 </CardContent>
               </Card>
@@ -142,7 +170,7 @@ export default function CalendarPage() {
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{monthStats.completed}</div>
-                    <div className="text-sm text-gray-500">Completed</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Completed</div>
                   </div>
                 </CardContent>
               </Card>
@@ -150,7 +178,7 @@ export default function CalendarPage() {
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">{monthStats.pending}</div>
-                    <div className="text-sm text-gray-500">Pending</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Pending</div>
                   </div>
                 </CardContent>
               </Card>
@@ -158,7 +186,7 @@ export default function CalendarPage() {
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-600">{monthStats.overdue}</div>
-                    <div className="text-sm text-gray-500">Overdue</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Overdue</div>
                   </div>
                 </CardContent>
               </Card>
@@ -168,7 +196,7 @@ export default function CalendarPage() {
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>
+                  <CardTitle className="dark:text-white">
                     {format(currentMonth, 'MMMM yyyy')}
                   </CardTitle>
                   <div className="flex items-center gap-2">
@@ -196,7 +224,7 @@ export default function CalendarPage() {
                   {/* Calendar Header */}
                   <div className="grid grid-cols-7 gap-1 mb-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                      <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                         {day}
                       </div>
                     ))}
@@ -216,11 +244,11 @@ export default function CalendarPage() {
                           key={index}
                           onClick={() => setSelectedDate(date)}
                           className={`
-                            relative p-2 min-h-[40px] text-sm rounded-md transition-colors
+                            relative p-2 min-h-[40px] text-sm rounded-xl transition-colors
                             ${isSelected ? 'bg-[#4169E1] text-white' : ''}
-                            ${isTodayDate && !isSelected ? 'bg-blue-100 text-blue-900 font-semibold' : ''}
-                            ${!isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'}
-                            ${!isSelected && isCurrentMonthDay ? 'hover:bg-gray-100' : ''}
+                            ${isTodayDate && !isSelected ? 'bg-blue-100 text-blue-900 font-semibold dark:bg-blue-900 dark:text-blue-100' : ''}
+                            ${!isCurrentMonthDay ? 'text-gray-300 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'}
+                            ${!isSelected && isCurrentMonthDay ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : ''}
                           `}
                         >
                           <span>{format(date, 'd')}</span>
@@ -241,15 +269,15 @@ export default function CalendarPage() {
                 <div className="mt-4 flex items-center gap-4 text-sm flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-[#4169E1]"></div>
-                    <span>Selected</span>
+                    <span className="dark:text-gray-300">Selected</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-blue-100 border-2 border-blue-500"></div>
-                    <span>Today</span>
+                    <span className="dark:text-gray-300">Today</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-                    <span>Has Tasks</span>
+                    <span className="dark:text-gray-300">Has Tasks</span>
                   </div>
                 </div>
               </CardContent>
@@ -261,7 +289,7 @@ export default function CalendarPage() {
             <Card className="rounded-2xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">
+                  <CardTitle className="text-lg dark:text-white">
                     {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                   </CardTitle>
                   <Button 
@@ -277,7 +305,7 @@ export default function CalendarPage() {
               <CardContent>
                 <div className="space-y-3">
                   {selectedDateTasks.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <p>No tasks for this date</p>
                       <Button 
                         variant="outline" 
@@ -305,22 +333,22 @@ export default function CalendarPage() {
             {selectedDateTasks.length > 0 && (
               <Card className="rounded-2xl">
                 <CardHeader>
-                  <CardTitle className="text-lg">Day Summary</CardTitle>
+                  <CardTitle className="text-lg dark:text-white">Day Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Total Tasks</span>
+                      <span className="text-sm dark:text-gray-300">Total Tasks</span>
                       <Badge variant="outline" className="rounded-full">{selectedDateTasks.length}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Completed</span>
+                      <span className="text-sm dark:text-gray-300">Completed</span>
                       <Badge className="bg-green-100 text-green-700 hover:bg-green-100 rounded-full">
                         {selectedDateTasks.filter(task => task.completed).length}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Pending</span>
+                      <span className="text-sm dark:text-gray-300">Pending</span>
                       <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 rounded-full">
                         {selectedDateTasks.filter(task => !task.completed).length}
                       </Badge>
@@ -342,6 +370,12 @@ export default function CalendarPage() {
         }}
         onSubmit={handleCreateTask}
         editTask={editingTask}
+      />
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        open={showShortcutsDialog}
+        onClose={() => setShowShortcutsDialog(false)}
       />
     </div>
   );
