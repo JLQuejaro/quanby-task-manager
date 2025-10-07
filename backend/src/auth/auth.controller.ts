@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  UseGuards, 
+  Req, 
+  Res 
+} from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/register.dto';
@@ -24,17 +33,28 @@ export class AuthController {
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Login with Google' })
-  async googleAuth(@Req() req) {
+  async googleAuth(@Req() req: Request) {
     // Initiates Google OAuth flow
   }
 
-  @Get('google/callback')
+  @Get('callback/google')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
-  async googleAuthRedirect(@Req() req, @Res() res) {
-    const result = await this.authService.googleLogin(req.user);
-    
-    // Redirect to frontend with token
-    res.redirect(`http://localhost:3000/auth/callback?token=${result.access_token}&user=${encodeURIComponent(JSON.stringify(result.user))}`);
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    try {
+      const result = await this.authService.googleLogin((req as any).user);
+      
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      
+      // Option 1: Only send token (recommended)
+      return res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}`);
+      
+      // Option 2: If you really need user data in URL (not recommended for production)
+      // return res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}&user=${encodeURIComponent(JSON.stringify(result.user))}`);
+    } catch (error) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+    }
   }
 }

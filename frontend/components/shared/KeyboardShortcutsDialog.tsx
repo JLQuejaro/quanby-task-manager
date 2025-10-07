@@ -88,9 +88,9 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-white rounded-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-900 rounded-2xl max-h-[80vh] overflow-y-auto border dark:border-gray-800">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+          <DialogTitle className="text-xl font-semibold flex items-center gap-2 dark:text-white">
             <Command className="h-5 w-5" />
             Keyboard Shortcuts
           </DialogTitle>
@@ -99,24 +99,24 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
         <div className="space-y-6 mt-4">
           {shortcutGroups.map((group) => (
             <div key={group.title} className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 {group.title}
               </h3>
               <div className="space-y-2">
                 {group.shortcuts.map((shortcut, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <span className="text-sm text-gray-600">{shortcut.description}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{shortcut.description}</span>
                     <div className="flex items-center gap-1">
                       {shortcut.keys.map((key, keyIndex) => (
                         <span key={keyIndex} className="flex items-center gap-1">
-                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded-lg shadow-sm">
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm">
                             {key}
                           </kbd>
                           {keyIndex < shortcut.keys.length - 1 && (
-                            <span className="text-gray-400 text-xs">+</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-xs">+</span>
                           )}
                         </span>
                       ))}
@@ -128,10 +128,10 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
           ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
-            Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded-lg">Esc</kbd> or{' '}
-            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded-lg">?</kbd> to close
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">Esc</kbd> or{' '}
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">?</kbd> to close
           </p>
         </div>
       </DialogContent>

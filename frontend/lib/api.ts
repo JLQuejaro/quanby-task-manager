@@ -35,12 +35,12 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    const { data } = await api.post('/auth/register', credentials);
+    const { data } = await api.post('/api/auth/register', credentials);
     return data;
   },
 
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const { data } = await api.post('/auth/login', credentials);
+    const { data } = await api.post('/api/auth/login', credentials);
     return data;
   },
 };
@@ -48,31 +48,31 @@ export const authApi = {
 // Tasks API
 export const tasksApi = {
   getAll: async (): Promise<Task[]> => {
-    const { data } = await api.get('/tasks');
+    const { data } = await api.get('/api/tasks');
     return data;
   },
 
   getOne: async (id: number): Promise<Task> => {
-    const { data } = await api.get(`/tasks/${id}`);
+    const { data } = await api.get(`/api/tasks/${id}`);
     return data;
   },
 
   create: async (task: Partial<Task>): Promise<Task> => {
-    const { data } = await api.post('/tasks', task);
+    const { data } = await api.post('/api/tasks', task);
     return data;
   },
 
   update: async (id: number, task: Partial<Task>): Promise<Task> => {
-    const { data } = await api.patch(`/tasks/${id}`, task);
+    const { data } = await api.patch(`/api/tasks/${id}`, task);
     return data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/tasks/${id}`);
+    await api.delete(`/api/tasks/${id}`);
   },
 
   toggleComplete: async (id: number, completed: boolean): Promise<Task> => {
-    const { data } = await api.patch(`/tasks/${id}`, { completed });
+    const { data } = await api.patch(`/api/tasks/${id}`, { completed });
     return data;
   },
 };

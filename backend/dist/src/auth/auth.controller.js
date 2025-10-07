@@ -31,8 +31,16 @@ let AuthController = class AuthController {
     async googleAuth(req) {
     }
     async googleAuthRedirect(req, res) {
-        const result = await this.authService.googleLogin(req.user);
-        res.redirect(`http://localhost:3000/auth/callback?token=${result.access_token}&user=${encodeURIComponent(JSON.stringify(result.user))}`);
+        try {
+            const result = await this.authService.googleLogin(req.user);
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            return res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}`);
+        }
+        catch (error) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+            return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+        }
     }
 };
 exports.AuthController = AuthController;
@@ -62,7 +70,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "googleAuth", null);
 __decorate([
-    (0, common_1.Get)('google/callback'),
+    (0, common_1.Get)('callback/google'),
     (0, common_1.UseGuards)(google_auth_guard_1.GoogleAuthGuard),
     (0, swagger_1.ApiOperation)({ summary: 'Google OAuth callback' }),
     __param(0, (0, common_1.Req)()),

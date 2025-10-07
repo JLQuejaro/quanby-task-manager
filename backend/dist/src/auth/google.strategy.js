@@ -11,27 +11,25 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GoogleStrategy = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const passport_1 = require("@nestjs/passport");
 const passport_google_oauth20_1 = require("passport-google-oauth20");
-const auth_service_1 = require("./auth.service");
 let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrategy)(passport_google_oauth20_1.Strategy, 'google') {
-    constructor(authService) {
+    constructor(configService) {
         super({
-            clientID: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: process.env.GOOGLE_CALLBACK_URL,
+            clientID: configService.get('GOOGLE_CLIENT_ID'),
+            clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
+            callbackURL: configService.get('GOOGLE_CALLBACK_URL'),
             scope: ['email', 'profile'],
         });
-        this.authService = authService;
+        this.configService = configService;
     }
     async validate(accessToken, refreshToken, profile, done) {
         const { name, emails, photos } = profile;
         const user = {
             email: emails[0].value,
-            firstName: name.givenName,
-            lastName: name.familyName,
             name: `${name.givenName} ${name.familyName}`,
-            picture: photos[0].value,
+            picture: photos[0]?.value,
             accessToken,
         };
         done(null, user);
@@ -40,6 +38,6 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
 exports.GoogleStrategy = GoogleStrategy;
 exports.GoogleStrategy = GoogleStrategy = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [auth_service_1.AuthService])
+    __metadata("design:paramtypes", [config_1.ConfigService])
 ], GoogleStrategy);
 //# sourceMappingURL=google.strategy.js.map

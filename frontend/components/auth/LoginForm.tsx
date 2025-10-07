@@ -154,7 +154,9 @@ export function LoginForm() {
               type="button"
               variant="outline"
               className="w-full h-11 font-medium rounded-xl"
-              onClick={handleGoogleLogin}
+              onClick={() => {
+                window.location.href = 'http://localhost:3001/api/auth/google';
+              }}
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path
