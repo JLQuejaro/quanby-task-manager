@@ -3,8 +3,6 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckSquare } from 'lucide-react';
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 
 function CallbackContent() {
   const router = useRouter();
@@ -22,7 +20,7 @@ function CallbackContent() {
           console.error('OAuth error:', error);
           setStatus('error');
           setErrorMessage(decodeURIComponent(error));
-          setTimeout(() => router.push(`/login?error=${error}`), 2000);
+          setTimeout(() => router.push('/login'), 2000);
           return;
         }
 
@@ -30,13 +28,13 @@ function CallbackContent() {
           console.error('No token found');
           setStatus('error');
           setErrorMessage('No authentication token received');
-          setTimeout(() => router.push('/login?error=no_token'), 2000);
+          setTimeout(() => router.push('/login'), 2000);
           return;
         }
 
-        // Store token first
+        // Store token
         localStorage.setItem('token', token);
-        localStorage.setItem('access_token', token); // Backup key
+        localStorage.setItem('access_token', token);
 
         // Fetch user profile from backend
         const response = await fetch('http://localhost:3001/api/auth/profile', {
@@ -49,15 +47,15 @@ function CallbackContent() {
           throw new Error('Failed to fetch user profile');
         }
 
-        const user = await response.json();
+        const userData = await response.json();
         
         // Store user data
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user', JSON.stringify(userData));
         
-        console.log('Auth successful:', user);
+        console.log('Google OAuth successful:', userData);
         setStatus('success');
         
-        // Redirect to dashboard
+        // Small delay to show success state
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 500);
@@ -65,7 +63,7 @@ function CallbackContent() {
         console.error('Error processing authentication:', error);
         setStatus('error');
         setErrorMessage(error instanceof Error ? error.message : 'Authentication failed');
-        setTimeout(() => router.push('/login?error=auth_failed'), 2000);
+        setTimeout(() => router.push('/login'), 2000);
       }
     };
 
@@ -92,7 +90,7 @@ function CallbackContent() {
               Completing sign in...
             </p>
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-              Please wait while we redirect you
+              Please wait while we authenticate your account
             </p>
           </>
         )}

@@ -54,7 +54,6 @@ export class AuthController {
     }
   }
 
-  // ← ADD THIS NEW ENDPOINT
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

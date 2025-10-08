@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
+  loginWithGoogle: () => void;
   logout: () => void;
 }
 
@@ -28,7 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
       } catch (error) {
         console.error('Failed to parse user data:', error);
         localStorage.removeItem('token');
@@ -38,9 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setIsLoading(false);
   }, []);
-
   
-
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await authApi.login(credentials);
@@ -56,6 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error(message);
       throw error;
     }
+  };
+
+  const loginWithGoogle = () => {
+    // Redirect to backend Google OAuth endpoint
+    window.location.href = 'http://localhost:3001/api/auth/google';
   };
 
   const register = async (credentials: RegisterCredentials) => {
@@ -78,13 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
     setUser(null);
     toast.success('Logged out successfully');
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
