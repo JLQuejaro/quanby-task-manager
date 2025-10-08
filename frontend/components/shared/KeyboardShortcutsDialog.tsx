@@ -33,23 +33,14 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       ],
     },
     {
-      title: 'Navigation',
-      shortcuts: [
-        { keys: ['Ctrl', 'D'], description: 'Dashboard' },
-        { keys: ['Ctrl', 'T'], description: 'Tasks' },
-        { keys: ['Ctrl', 'P'], description: 'Profile' },
-        { keys: ['Ctrl', ','], description: 'Settings' },
-      ],
-    },
-    {
       title: 'Search & Filters',
       shortcuts: [
         { keys: ['/'], description: 'Search' },
-        { keys: ['Ctrl', '1'], description: 'All Tasks' },
-        { keys: ['Ctrl', '2'], description: 'Today' },
-        { keys: ['Ctrl', '3'], description: 'Tomorrow' },
-        { keys: ['Ctrl', '4'], description: 'Upcoming' },
-        { keys: ['Ctrl', '5'], description: 'Completed' },
+        { keys: ['1'], description: 'All Tasks' },
+        { keys: ['2'], description: 'Today' },
+        { keys: ['3'], description: 'Tomorrow' },
+        { keys: ['4'], description: 'Upcoming' },
+        { keys: ['5'], description: 'Completed' },
       ],
     },
     {
@@ -71,16 +62,15 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
     {
       title: 'View & Display',
       shortcuts: [
-        { keys: ['Ctrl', 'K'], description: 'Toggle Theme' },
-        { keys: ['Ctrl', 'R'], description: 'Refresh' },
+        { keys: ['K'], description: 'Toggle Theme' },
+        { keys: ['R'], description: 'Refresh' },
         { keys: ['?'], description: 'Show Shortcuts' },
       ],
     },
     {
       title: 'Form Actions',
       shortcuts: [
-        { keys: ['Ctrl', 'S'], description: 'Save' },
-        { keys: ['Ctrl', 'Enter'], description: 'Submit' },
+        { keys: ['Enter'], description: 'Submit' },
         { keys: ['Esc'], description: 'Cancel' },
       ],
     },

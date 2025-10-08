@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Calendar, Clock, Flag } from 'lucide-react';
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -32,8 +33,8 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [deadline, setDeadline] = useState('');
-  const [deadlineTime, setDeadlineTime] = useState('08:00');
+  const [deadlineDate, setDeadlineDate] = useState('');
+  const [deadlineTime, setDeadlineTime] = useState('');
 
   useEffect(() => {
     if (editTask) {
@@ -43,37 +44,35 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
       
       if (editTask.deadline) {
         const date = new Date(editTask.deadline);
-        setDeadline(date.toISOString().split('T')[0]);
+        setDeadlineDate(date.toISOString().split('T')[0]);
         setDeadlineTime(date.toTimeString().slice(0, 5));
-      } else {
-        setDeadline('');
-        setDeadlineTime('08:00');
       }
     } else {
       setTitle('');
       setDescription('');
       setPriority('medium');
-      setDeadline('');
-      setDeadlineTime('08:00');
+      setDeadlineDate('');
+      setDeadlineTime('');
     }
   }, [editTask, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let deadlineISO: string | undefined;
-    if (deadline) {
-      const [hours, minutes] = deadlineTime.split(':');
-      const dateTime = new Date(deadline);
-      dateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      deadlineISO = dateTime.toISOString();
+    let deadline = undefined;
+    if (deadlineDate) {
+      if (deadlineTime) {
+        deadline = new Date(`${deadlineDate}T${deadlineTime}`).toISOString();
+      } else {
+        deadline = new Date(deadlineDate).toISOString();
+      }
     }
 
     onSubmit({
       title,
       description: description || undefined,
       priority,
-      deadline: deadlineISO,
+      deadline,
     });
 
     handleClose();
@@ -83,39 +82,39 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
     setTitle('');
     setDescription('');
     setPriority('medium');
-    setDeadline('');
-    setDeadlineTime('08:00');
+    setDeadlineDate('');
+    setDeadlineTime('');
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800 z-50 rounded-2xl">
+      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+          <DialogTitle className="text-xl font-semibold dark:text-white">
             {editTask ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm font-medium">
-              Title <span className="text-red-500">*</span>
+            <Label htmlFor="title" className="text-sm font-medium dark:text-gray-200">
+              Title *
             </Label>
             <Input
               id="title"
               placeholder="Enter task title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white"
               required
-              className="w-full rounded-xl"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
+            <Label htmlFor="description" className="text-sm font-medium dark:text-gray-200">
               Description
             </Label>
             <Textarea
@@ -124,90 +123,101 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-xl"
+              className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white resize-none"
             />
           </div>
 
           {/* Priority */}
           <div className="space-y-2">
-            <Label htmlFor="priority" className="text-sm font-medium">
-              Priority <span className="text-red-500">*</span>
+            <Label htmlFor="priority" className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+              <Flag className="h-4 w-4" />
+              Priority *
             </Label>
             <Select value={priority} onValueChange={(value: any) => setPriority(value)}>
-              <SelectTrigger className="w-full rounded-xl">
+              <SelectTrigger className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
-              <SelectContent className="bg-white z-[100] rounded-xl">
-                <SelectItem value="low" className="rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                    Low
-                  </div>
+              <SelectContent className="rounded-xl dark:bg-gray-800 dark:border-gray-700">
+                <SelectItem value="low" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    Low Priority
+                  </span>
                 </SelectItem>
-                <SelectItem value="medium" className="rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
-                    Medium
-                  </div>
+                <SelectItem value="medium" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                    Medium Priority
+                  </span>
                 </SelectItem>
-                <SelectItem value="high" className="rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                    High
-                  </div>
+                <SelectItem value="high" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    High Priority
+                  </span>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Deadline */}
+          {/* Deadline Date & Time */}
           <div className="space-y-2">
-            <Label htmlFor="deadline" className="text-sm font-medium">
+            <Label className="text-sm font-medium dark:text-gray-200 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
               Deadline
             </Label>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label htmlFor="deadline-date" className="text-xs text-gray-500 dark:text-gray-400 block mb-2">
+                  Date
+                </Label>
                 <Input
-                  id="deadline"
+                  id="deadline-date"
                   type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full cursor-text rounded-xl"
-                  min={new Date().toISOString().split('T')[0]}
-                  placeholder="mm/dd/yyyy"
+                  value={deadlineDate}
+                  onChange={(e) => setDeadlineDate(e.target.value)}
+                  className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:[color-scheme:dark] h-11"
                 />
               </div>
               <div>
+                <Label htmlFor="deadline-time" className="text-xs text-gray-500 dark:text-gray-400 block mb-2">
+                  Time
+                </Label>
                 <Input
-                  id="deadlineTime"
+                  id="deadline-time"
                   type="time"
                   value={deadlineTime}
                   onChange={(e) => setDeadlineTime(e.target.value)}
-                  className="w-full cursor-text rounded-xl"
-                  placeholder="HH:MM"
+                  className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:[color-scheme:dark] h-11"
                 />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 mt-6">
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button 
               type="button" 
               variant="outline" 
               onClick={handleClose}
-              className="w-full sm:w-auto rounded-xl"
+              className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
-              className="bg-[#4169E1] hover:bg-[#3558CC] w-full sm:w-auto rounded-xl"
-              disabled={!title.trim()}
+              className="rounded-xl bg-[#4169E1] hover:bg-[#3558CC] text-white"
             >
               {editTask ? 'Update Task' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>
+
+        <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">Enter</kbd> to submit or{' '}
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">Esc</kbd> to cancel
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );

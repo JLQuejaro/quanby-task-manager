@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/Header';
 import { TaskList } from '@/components/tasks/TaskList';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useTasks } from '@/hooks/useTasks';
 import { Task } from '@/lib/types';
 import { Plus } from 'lucide-react';
@@ -62,10 +63,10 @@ export default function TasksPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600">Loading tasks...</p>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tasks...</p>
         </div>
       </div>
     );
@@ -87,32 +88,36 @@ export default function TasksPage() {
         onSearchChange={setSearchTerm}
       />
 
-      <div className="p-6 space-y-6">
-        {/* Header with New Task Button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
-              {searchTerm.trim() && ` found`}
-            </p>
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        {/* Header Card with New Task Button */}
+        <Card className="p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
+                {searchTerm.trim() && ` found`}
+              </p>
+            </div>
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl shadow-sm transition-all hover:shadow-md"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              New Task
+            </Button>
           </div>
-          <Button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            New Task
-          </Button>
-        </div>
+        </Card>
 
-        {/* Task List */}
-        <TaskList
-          tasks={filteredTasks}
-          onToggleComplete={toggleComplete}
-          onEdit={handleEditTask}
-          onDelete={deleteTask}
-        />
+        {/* Task List Card */}
+        <Card className="p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <TaskList
+            tasks={filteredTasks}
+            onToggleComplete={toggleComplete}
+            onEdit={handleEditTask}
+            onDelete={deleteTask}
+          />
+        </Card>
       </div>
 
       {/* Create/Edit Task Dialog */}

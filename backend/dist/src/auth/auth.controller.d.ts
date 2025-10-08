@@ -21,4 +21,5 @@ export declare class AuthController {
     }>;
     googleAuth(req: Request): Promise<void>;
     googleAuthRedirect(req: Request, res: Response): Promise<void>;
+    getProfile(req: Request): Promise<any>;
 }

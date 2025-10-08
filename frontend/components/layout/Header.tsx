@@ -84,7 +84,7 @@ export function Header({ title, showSearch = true, searchValue = '', onSearchCha
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative hover:bg-gray-100 transition-colors rounded-xl"
+            className="relative hover:bg-gray-100  dark:hover:bg-gray-800 transition-colors rounded-xl"
             onClick={handleNotifications}
           >
             <Bell className="h-5 w-5" />
