@@ -35,16 +35,19 @@ let AuthController = class AuthController {
         try {
             const result = await this.authService.googleLogin(req.user);
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            return res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}`);
+            return res.redirect(`${frontendUrl}/callback?token=${result.access_token}`);
         }
         catch (error) {
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-            return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+            return res.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
         }
     }
     async getProfile(req) {
         return req.user;
+    }
+    async getAllUsers() {
+        return this.authService.findAllUsers();
     }
 };
 exports.AuthController = AuthController;
@@ -93,6 +96,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.Get)('users'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all registered users' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "getAllUsers", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),

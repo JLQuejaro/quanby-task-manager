@@ -96,6 +96,15 @@ let AuthService = class AuthService {
         const { password, ...result } = user;
         return result;
     }
+    async findAllUsers() {
+        const allUsers = await db_1.db.select({
+            id: schema_1.users.id,
+            email: schema_1.users.email,
+            name: schema_1.users.name,
+            createdAt: schema_1.users.createdAt,
+        }).from(schema_1.users);
+        return allUsers;
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

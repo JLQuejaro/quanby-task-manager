@@ -64,4 +64,17 @@ export class AuthService {
     const { password, ...result } = user;
     return result;
   }
+
+  // Get all users (for debugging - remove in production)
+  async findAllUsers() {
+    const allUsers = await db.select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      createdAt: users.createdAt,
+      // Don't select password field for security
+    }).from(users);
+    
+    return allUsers;
+  }
 }

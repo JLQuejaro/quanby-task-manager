@@ -55,9 +55,9 @@ function CallbackContent() {
         console.log('Google OAuth successful:', userData);
         setStatus('success');
         
-        // Small delay to show success state
+        // Use router.push instead of window.location.href for better Next.js navigation
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          router.push('/dashboard');
         }, 500);
       } catch (error) {
         console.error('Error processing authentication:', error);

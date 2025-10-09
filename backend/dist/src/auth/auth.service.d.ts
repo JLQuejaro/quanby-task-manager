@@ -33,4 +33,10 @@ export declare class AuthService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    findAllUsers(): Promise<{
+        id: number;
+        email: string;
+        name: string;
+        createdAt: Date;
+    }[]>;
 }

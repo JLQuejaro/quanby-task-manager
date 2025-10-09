@@ -134,23 +134,23 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               Priority *
             </Label>
             <Select value={priority} onValueChange={(value: any) => setPriority(value)}>
-              <SelectTrigger className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+              <SelectTrigger className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border border-gray-300 text-gray-900">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="low" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+              <SelectContent className="rounded-xl dark:bg-gray-800 dark:border-gray-700 bg-white border border-gray-300">
+                <SelectItem value="low" className="rounded-lg dark:text-white dark:focus:bg-gray-700 text-gray-900 focus:bg-gray-100">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
                     Low Priority
                   </span>
                 </SelectItem>
-                <SelectItem value="medium" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+                <SelectItem value="medium" className="rounded-lg dark:text-white dark:focus:bg-gray-700 text-gray-900 focus:bg-gray-100">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-orange-500"></span>
                     Medium Priority
                   </span>
                 </SelectItem>
-                <SelectItem value="high" className="rounded-lg dark:text-white dark:focus:bg-gray-700">
+                <SelectItem value="high" className="rounded-lg dark:text-white dark:focus:bg-gray-700 text-gray-900 focus:bg-gray-100">
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500"></span>
                     High Priority

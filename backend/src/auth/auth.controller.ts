@@ -46,11 +46,11 @@ export class AuthController {
       const result = await this.authService.googleLogin((req as any).user);
       
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      return res.redirect(`${frontendUrl}/auth/callback?token=${result.access_token}`);
+      return res.redirect(`${frontendUrl}/callback?token=${result.access_token}`);
     } catch (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
     }
   }
 
@@ -61,4 +61,10 @@ export class AuthController {
   async getProfile(@Req() req: Request) {
     return (req as any).user;
   }
-}
+
+  @Get('users')
+  @ApiOperation({ summary: 'Get all registered users' })
+  async getAllUsers() {
+    return this.authService.findAllUsers();
+  }
+} 

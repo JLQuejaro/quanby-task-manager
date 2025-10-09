@@ -22,4 +22,10 @@ export declare class AuthController {
     googleAuth(req: Request): Promise<void>;
     googleAuthRedirect(req: Request, res: Response): Promise<void>;
     getProfile(req: Request): Promise<any>;
+    getAllUsers(): Promise<{
+        id: number;
+        email: string;
+        name: string;
+        createdAt: Date;
+    }[]>;
 }
