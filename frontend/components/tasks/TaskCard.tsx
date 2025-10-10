@@ -25,7 +25,7 @@ interface TaskCardProps {
 export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) {
   return (
     <Card className={cn(
-      'p-4 hover:shadow-md transition-shadow rounded-xl',
+      'p-4 hover:shadow-md transition-shadow rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900',
       task.completed && 'opacity-60'
     )}>
       <div className="flex items-start gap-3">
@@ -41,31 +41,38 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardP
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <h3 className={cn(
-                'font-medium text-gray-900',
-                task.completed && 'line-through text-gray-500'
+                'font-medium text-gray-900 dark:text-gray-100',
+                task.completed && 'line-through text-gray-500 dark:text-gray-400'
               )}>
                 {task.title}
               </h3>
               {task.description && (
-                <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>
               )}
             </div>
 
             {/* More Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                  <MoreVertical className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border shadow-md rounded-xl">
-                <DropdownMenuItem onClick={() => onEdit(task)}>
+              <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md rounded-xl">
+                <DropdownMenuItem 
+                  onClick={() => onEdit(task)}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-800 focus:text-gray-900 dark:focus:text-gray-100"
+                >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onDelete(task.id)}
-                  className="text-destructive"
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer focus:bg-red-50 dark:focus:bg-red-950/30 focus:text-red-700 dark:focus:text-red-300"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete

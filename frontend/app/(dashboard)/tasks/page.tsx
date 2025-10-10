@@ -66,7 +66,7 @@ export default function TasksPage() {
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tasks...</p>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">Loading tasks...</p>
         </div>
       </div>
     );
@@ -93,8 +93,8 @@ export default function TasksPage() {
         <Card className="p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">All Tasks</h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-1">
                 {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
                 {searchTerm.trim() && ` found`}
               </p>
