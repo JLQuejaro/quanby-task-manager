@@ -114,51 +114,60 @@ export function useTasks() {
     }
   };
 
-  // Check for deadline reminders and overdue tasks
+  // ✅ FIXED: Check for deadline reminders and overdue tasks - IMMEDIATE NOTIFICATION
   useEffect(() => {
     if (!tasks.length) return;
 
     const checkDeadlines = () => {
       const now = new Date();
-      const checkedToday = localStorage.getItem('deadlines_checked_today');
-      const today = now.toDateString();
-
-      // Only check once per day to avoid spam
-      if (checkedToday === today) return;
+      const notifiedKey = 'notified_tasks';
+      const notified = JSON.parse(localStorage.getItem(notifiedKey) || '{}');
 
       tasks.forEach(task => {
         if (task.completed || !task.deadline) return;
 
         const deadline = new Date(task.deadline);
         const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const taskKey = `${task.id}_${task.deadline}`;
         
-        // Reminder 24 hours before deadline
+        // ✅ 24-hour reminder (only notify once per task+deadline combo)
         if (hoursUntilDeadline > 0 && hoursUntilDeadline <= 24) {
-          addNotification(
-            'deadline_reminder',
-            'Deadline Approaching',
-            `"${task.title}" is due in ${Math.round(hoursUntilDeadline)} hours`,
-            task.id
-          );
+          if (!notified[`reminder_${taskKey}`]) {
+            addNotification(
+              'deadline_reminder',
+              'Deadline Approaching',
+              `"${task.title}" is due in ${Math.round(hoursUntilDeadline)} hours`,
+              task.id,
+              { hoursRemaining: Math.round(hoursUntilDeadline) }
+            );
+            notified[`reminder_${taskKey}`] = Date.now();
+            localStorage.setItem(notifiedKey, JSON.stringify(notified));
+          }
         }
         
-        // Overdue alert
-        if (hoursUntilDeadline < 0 && hoursUntilDeadline > -24) {
-          addNotification(
-            'overdue_alert',
-            'Task Overdue',
-            `"${task.title}" is overdue`,
-            task.id
-          );
+        // ✅ Overdue alert (only notify once per task+deadline combo)
+        if (hoursUntilDeadline < 0) {
+          if (!notified[`overdue_${taskKey}`]) {
+            const hoursOverdue = Math.abs(Math.round(hoursUntilDeadline));
+            addNotification(
+              'overdue_alert',
+              'Task Overdue',
+              `"${task.title}" is ${hoursOverdue} hour${hoursOverdue !== 1 ? 's' : ''} overdue`,
+              task.id,
+              { hoursOverdue }
+            );
+            notified[`overdue_${taskKey}`] = Date.now();
+            localStorage.setItem(notifiedKey, JSON.stringify(notified));
+          }
         }
       });
-
-      localStorage.setItem('deadlines_checked_today', today);
     };
 
-    // Check on mount and every hour
+    // ✅ Check immediately on mount
     checkDeadlines();
-    const interval = setInterval(checkDeadlines, 60 * 60 * 1000);
+    
+    // ✅ Then check every 30 minutes (instead of every hour)
+    const interval = setInterval(checkDeadlines, 30 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [tasks, addNotification]);
