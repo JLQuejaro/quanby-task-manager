@@ -28,4 +28,9 @@ export declare class AuthController {
         name: string;
         createdAt: Date;
     }[]>;
+    setPassword(req: Request, body: {
+        password: string;
+    }): Promise<{
+        message: string;
+    }>;
 }

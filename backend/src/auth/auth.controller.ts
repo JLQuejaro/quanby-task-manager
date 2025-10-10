@@ -5,7 +5,8 @@ import {
   Body, 
   UseGuards, 
   Req, 
-  Res 
+  Res, 
+  UnauthorizedException
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -66,5 +67,19 @@ export class AuthController {
   @ApiOperation({ summary: 'Get all registered users' })
   async getAllUsers() {
     return this.authService.findAllUsers();
+  }
+
+  @Post('set-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set password for account' })
+  async setPassword(@Req() req: Request, @Body() body: { password: string }) {
+    const user = (req as any).user;
+    
+    if (!body.password || body.password.length < 6) {
+      throw new UnauthorizedException('Password must be at least 6 characters');
+    }
+    
+    return this.authService.setPassword(user.id, body.password);
   }
 } 

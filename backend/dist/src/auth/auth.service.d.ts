@@ -39,4 +39,8 @@ export declare class AuthService {
         name: string;
         createdAt: Date;
     }[]>;
+    setPassword(userId: number, newPassword: string): Promise<{
+        message: string;
+    }>;
+    hasPassword(userId: number): Promise<boolean>;
 }

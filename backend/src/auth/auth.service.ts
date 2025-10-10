@@ -96,4 +96,25 @@ export class AuthService {
     
     return allUsers;
   }
+
+  // Allow users to set a password (for Google users or password reset)
+  async setPassword(userId: number, newPassword: string) {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, userId));
+    
+    console.log('✅ Password set for user ID:', userId);
+    return { message: 'Password set successfully. You can now login with email and password.' };
+  }
+
+  // Check if user has a password set
+  async hasPassword(userId: number): Promise<boolean> {
+    const [user] = await db.select({ password: users.password })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    return user && user.password.length > 0;
+  }
 }

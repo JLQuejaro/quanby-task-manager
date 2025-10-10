@@ -49,6 +49,13 @@ let AuthController = class AuthController {
     async getAllUsers() {
         return this.authService.findAllUsers();
     }
+    async setPassword(req, body) {
+        const user = req.user;
+        if (!body.password || body.password.length < 6) {
+            throw new common_1.UnauthorizedException('Password must be at least 6 characters');
+        }
+        return this.authService.setPassword(user.id, body.password);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -103,6 +110,17 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.Post)('set-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Set password for account' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "setPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),

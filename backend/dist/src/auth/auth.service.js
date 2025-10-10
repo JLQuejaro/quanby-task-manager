@@ -122,6 +122,20 @@ let AuthService = class AuthService {
         }).from(schema_1.users);
         return allUsers;
     }
+    async setPassword(userId, newPassword) {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db_1.db.update(schema_1.users)
+            .set({ password: hashedPassword })
+            .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        console.log('✅ Password set for user ID:', userId);
+        return { message: 'Password set successfully. You can now login with email and password.' };
+    }
+    async hasPassword(userId) {
+        const [user] = await db_1.db.select({ password: schema_1.users.password })
+            .from(schema_1.users)
+            .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        return user && user.password.length > 0;
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
