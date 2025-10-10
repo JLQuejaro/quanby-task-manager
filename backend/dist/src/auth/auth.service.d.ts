@@ -13,7 +13,7 @@ export declare class AuthService {
     login(loginDto: LoginDto): Promise<{
         access_token: string;
         user: {
-            id: number;
+            id: string;
             email: string;
             name: string;
         };
@@ -21,7 +21,7 @@ export declare class AuthService {
     googleLogin(googleUser: any): Promise<{
         access_token: string;
         user: {
-            id: number;
+            id: string;
             email: string;
             name: string;
         };

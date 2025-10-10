@@ -11,6 +11,13 @@ export class AuthService {
   constructor(private jwtService: JwtService) {}
 
   async register(registerDto: RegisterDto) {
+    // Check if user already exists
+    const [existingUser] = await db.select().from(users).where(eq(users.email, registerDto.email));
+    
+    if (existingUser) {
+      throw new UnauthorizedException('Email already registered');
+    }
+
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     
     const [user] = await db.insert(users).values({
@@ -20,6 +27,7 @@ export class AuthService {
     }).returning();
 
     const { password, ...result } = user;
+    console.log('✅ New user registered:', result.email);
     return result;
   }
 
@@ -31,31 +39,42 @@ export class AuthService {
     }
 
     const payload = { sub: user.id, email: user.email };
+    console.log('✅ User logged in:', user.email);
+    
     return {
       access_token: await this.jwtService.signAsync(payload),
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id.toString(), email: user.email, name: user.name },
     };
   }
 
-  // New method for Google OAuth
+  // Google OAuth login/registration
   async googleLogin(googleUser: any) {
-    // Check if user exists
-    let [user] = await db.select().from(users).where(eq(users.email, googleUser.email));
+    try {
+      // Check if user exists
+      let [user] = await db.select().from(users).where(eq(users.email, googleUser.email));
 
-    // If user doesn't exist, create one
-    if (!user) {
-      [user] = await db.insert(users).values({
-        email: googleUser.email,
-        name: googleUser.name,
-        password: await bcrypt.hash(Math.random().toString(36), 10), // Random password for Google users
-      }).returning();
+      // If user doesn't exist, create one
+      if (!user) {
+        console.log('🆕 Creating new Google user:', googleUser.email);
+        [user] = await db.insert(users).values({
+          email: googleUser.email,
+          name: googleUser.name,
+          password: await bcrypt.hash(Math.random().toString(36), 10), // Random password for Google users
+        }).returning();
+        console.log('✅ New Google user created:', user.email);
+      } else {
+        console.log('✅ Existing Google user logged in:', user.email);
+      }
+
+      const payload = { sub: user.id, email: user.email };
+      return {
+        access_token: await this.jwtService.signAsync(payload),
+        user: { id: user.id.toString(), email: user.email, name: user.name },
+      };
+    } catch (error) {
+      console.error('❌ Google login error:', error);
+      throw new UnauthorizedException('Google authentication failed');
     }
-
-    const payload = { sub: user.id, email: user.email };
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-      user: { id: user.id, email: user.email, name: user.name },
-    };
   }
 
   async validateUser(userId: number) {

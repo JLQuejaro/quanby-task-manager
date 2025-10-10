@@ -3,10 +3,12 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckSquare } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setUser } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -17,7 +19,7 @@ function CallbackContent() {
         const error = searchParams.get('error');
 
         if (error) {
-          console.error('OAuth error:', error);
+          console.error('❌ OAuth error:', error);
           setStatus('error');
           setErrorMessage(decodeURIComponent(error));
           setTimeout(() => router.push('/login'), 2000);
@@ -25,7 +27,7 @@ function CallbackContent() {
         }
 
         if (!token) {
-          console.error('No token found');
+          console.error('❌ No token found');
           setStatus('error');
           setErrorMessage('No authentication token received');
           setTimeout(() => router.push('/login'), 2000);
@@ -52,15 +54,18 @@ function CallbackContent() {
         // Store user data
         localStorage.setItem('user', JSON.stringify(userData));
         
-        console.log('Google OAuth successful:', userData);
+        // Update AuthContext - THIS IS KEY!
+        setUser(userData);
+        
+        console.log('✅ Google OAuth successful:', userData);
         setStatus('success');
         
-        // Use router.push instead of window.location.href for better Next.js navigation
+        // Navigate to dashboard
         setTimeout(() => {
           router.push('/dashboard');
         }, 500);
       } catch (error) {
-        console.error('Error processing authentication:', error);
+        console.error('❌ Error processing authentication:', error);
         setStatus('error');
         setErrorMessage(error instanceof Error ? error.message : 'Authentication failed');
         setTimeout(() => router.push('/login'), 2000);
@@ -68,7 +73,7 @@ function CallbackContent() {
     };
 
     handleCallback();
-  }, [searchParams, router]);
+  }, [searchParams, router, setUser]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">

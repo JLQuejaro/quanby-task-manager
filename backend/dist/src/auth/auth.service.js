@@ -54,6 +54,10 @@ let AuthService = class AuthService {
         this.jwtService = jwtService;
     }
     async register(registerDto) {
+        const [existingUser] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, registerDto.email));
+        if (existingUser) {
+            throw new common_1.UnauthorizedException('Email already registered');
+        }
         const hashedPassword = await bcrypt.hash(registerDto.password, 10);
         const [user] = await db_1.db.insert(schema_1.users).values({
             email: registerDto.email,
@@ -61,6 +65,7 @@ let AuthService = class AuthService {
             name: registerDto.name,
         }).returning();
         const { password, ...result } = user;
+        console.log('✅ New user registered:', result.email);
         return result;
     }
     async login(loginDto) {
@@ -69,25 +74,37 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const payload = { sub: user.id, email: user.email };
+        console.log('✅ User logged in:', user.email);
         return {
             access_token: await this.jwtService.signAsync(payload),
-            user: { id: user.id, email: user.email, name: user.name },
+            user: { id: user.id.toString(), email: user.email, name: user.name },
         };
     }
     async googleLogin(googleUser) {
-        let [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, googleUser.email));
-        if (!user) {
-            [user] = await db_1.db.insert(schema_1.users).values({
-                email: googleUser.email,
-                name: googleUser.name,
-                password: await bcrypt.hash(Math.random().toString(36), 10),
-            }).returning();
+        try {
+            let [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, googleUser.email));
+            if (!user) {
+                console.log('🆕 Creating new Google user:', googleUser.email);
+                [user] = await db_1.db.insert(schema_1.users).values({
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    password: await bcrypt.hash(Math.random().toString(36), 10),
+                }).returning();
+                console.log('✅ New Google user created:', user.email);
+            }
+            else {
+                console.log('✅ Existing Google user logged in:', user.email);
+            }
+            const payload = { sub: user.id, email: user.email };
+            return {
+                access_token: await this.jwtService.signAsync(payload),
+                user: { id: user.id.toString(), email: user.email, name: user.name },
+            };
         }
-        const payload = { sub: user.id, email: user.email };
-        return {
-            access_token: await this.jwtService.signAsync(payload),
-            user: { id: user.id, email: user.email, name: user.name },
-        };
+        catch (error) {
+            console.error('❌ Google login error:', error);
+            throw new common_1.UnauthorizedException('Google authentication failed');
+        }
     }
     async validateUser(userId) {
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));

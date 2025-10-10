@@ -1,5 +1,6 @@
-import { config } from 'dotenv';
-config(); // Load .env file FIRST
+// Load .env BEFORE any other imports
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';

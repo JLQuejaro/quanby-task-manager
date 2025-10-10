@@ -1,81 +1,68 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { authApi } from '@/lib/api';
-import { User, LoginCredentials, RegisterCredentials } from '@/lib/types';
-import toast from 'react-hot-toast';
+import { User } from '@/lib/types'; // ← Import User type from types.ts
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
-  loginWithGoogle: () => void;
+  login: (credentials: { email: string; password: string }) => Promise<void>;
   logout: () => void;
+  isLoading: boolean;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Check if user is logged in on mount
+    // Check if user is already logged in
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
+    const storedUser = localStorage.getItem('user');
+
+    if (token && storedUser) {
       try {
-        const parsedUser = JSON.parse(userData);
+        const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
+        console.log('✅ User loaded from localStorage:', parsedUser.email);
       } catch (error) {
-        console.error('Failed to parse user data:', error);
+        console.error('❌ Error parsing stored user:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
     }
-    
     setIsLoading(false);
   }, []);
-  
-  const login = async (credentials: LoginCredentials) => {
+
+  // Protect routes
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/callback'];
+      const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+      
+      if (!isPublicPath) {
+        console.log('⚠️ No user found, redirecting to login');
+        router.push('/login');
+      }
+    }
+  }, [user, isLoading, pathname, router]);
+
+  const login = async (credentials: { email: string; password: string }) => {
     try {
       const response = await authApi.login(credentials);
-      
       localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
       setUser(response.user);
-      toast.success('Login successful!');
+      console.log('✅ User logged in:', response.user.email);
       router.push('/dashboard');
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Login failed';
-      toast.error(message);
-      throw error;
-    }
-  };
-
-  const loginWithGoogle = () => {
-    // Redirect to backend Google OAuth endpoint
-    window.location.href = 'http://localhost:3001/api/auth/google';
-  };
-
-  const register = async (credentials: RegisterCredentials) => {
-    try {
-      await authApi.register(credentials);
-      toast.success('Registration successful! Please login.');
-      
-      // Auto-login after registration
-      await login({
-        email: credentials.email,
-        password: credentials.password,
-      });
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Registration failed';
-      toast.error(message);
+    } catch (error) {
+      console.error('❌ Login error:', error);
       throw error;
     }
   };
@@ -83,14 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('access_token');
     setUser(null);
-    toast.success('Logged out successfully');
+    console.log('👋 User logged out');
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, setUser }}>
       {children}
     </AuthContext.Provider>
   );
