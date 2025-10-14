@@ -15,13 +15,13 @@ const inter = Inter({ subsets: ['latin'] });
 function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <NotificationProvider>
+      <NotificationProvider>
+        <AuthProvider>
           <AuthNotificationWrapper>
             {children}
           </AuthNotificationWrapper>
-        </NotificationProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

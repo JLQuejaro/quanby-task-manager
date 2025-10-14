@@ -60,7 +60,7 @@ function CallbackContent() {
         localStorage.setItem('access_token', token);
 
         // Fetch user profile from backend
-        const response = await fetch(`${API_URL}/api/auth/profile`, {
+        const profileResponse = await fetch(`${API_URL}/api/auth/profile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -68,13 +68,13 @@ function CallbackContent() {
           },
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Profile fetch failed:', response.status, errorText);
-          throw new Error(`Failed to fetch user profile: ${response.status}`);
+        if (!profileResponse.ok) {
+          const errorText = await profileResponse.text();
+          console.error('❌ Profile fetch failed:', profileResponse.status, errorText);
+          throw new Error(`Failed to fetch user profile: ${profileResponse.status}`);
         }
 
-        const userData = await response.json();
+        const userData = await profileResponse.json();
 
         // Validate user data
         if (!userData || !userData.id || !userData.email) {
@@ -84,18 +84,46 @@ function CallbackContent() {
 
         console.log('✅ User profile fetched:', userData.email);
 
+        // Check if user has password set
+        console.log('🔑 Checking password status...');
+        const passwordCheckResponse = await fetch(`${API_URL}/api/auth/has-password`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        let hasPassword = false;
+        if (passwordCheckResponse.ok) {
+          const passwordData = await passwordCheckResponse.json();
+          hasPassword = passwordData.hasPassword;
+          console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
+        } else {
+          console.warn('⚠️ Failed to check password status, assuming not set');
+          hasPassword = false;
+        }
+
+        // Add hasPassword to user data
+        const userDataWithPassword = { ...userData, hasPassword };
+
         // Store user data in localStorage
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(userDataWithPassword));
 
         // Update AuthContext
-        setUser(userData);
+        setUser(userDataWithPassword);
 
         console.log('✅ Google OAuth successful:', userData.email);
         setStatus('success');
 
-        // Navigate to dashboard after brief delay
+        // Navigate based on password status
         setTimeout(() => {
-          router.push('/dashboard');
+          if (!hasPassword) {
+            console.log('⚠️ User has no password, redirecting to set-password');
+            router.push('/set-password');
+          } else {
+            console.log('✅ User has password, redirecting to dashboard');
+            router.push('/dashboard');
+          }
         }, 1000);
       } catch (error) {
         console.error('❌ Error processing OAuth callback:', error);
@@ -145,7 +173,7 @@ function CallbackContent() {
               Success!
             </p>
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-              Redirecting to dashboard...
+              Redirecting...
             </p>
           </>
         )}

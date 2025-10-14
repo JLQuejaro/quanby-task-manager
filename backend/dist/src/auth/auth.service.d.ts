@@ -9,6 +9,7 @@ export declare class AuthService {
             id: string;
             email: string;
             name: string;
+            authProvider: string;
         };
     }>;
     login(loginDto: LoginDto): Promise<{
@@ -17,6 +18,7 @@ export declare class AuthService {
             id: string;
             email: string;
             name: string;
+            authProvider: string;
         };
     }>;
     googleLogin(googleUser: any): Promise<{
@@ -25,12 +27,14 @@ export declare class AuthService {
             id: string;
             email: string;
             name: string;
+            authProvider: string;
         };
     }>;
     validateUser(userId: number): Promise<{
         id: number;
         email: string;
         name: string;
+        authProvider: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -38,6 +42,7 @@ export declare class AuthService {
         id: number;
         email: string;
         name: string;
+        authProvider: string;
         createdAt: Date;
     }[]>;
     setPassword(userId: number, newPassword: string): Promise<{

@@ -64,12 +64,18 @@ let AuthService = class AuthService {
             email: registerDto.email,
             password: hashedPassword,
             name: registerDto.name,
+            authProvider: 'email',
         }).returning();
         const payload = { sub: user.id, email: user.email };
         console.log('✅ New user registered:', user.email);
         return {
             access_token: await this.jwtService.signAsync(payload),
-            user: { id: user.id.toString(), email: user.email, name: user.name },
+            user: {
+                id: user.id.toString(),
+                email: user.email,
+                name: user.name,
+                authProvider: user.authProvider || 'email'
+            },
         };
     }
     async login(loginDto) {
@@ -87,7 +93,12 @@ let AuthService = class AuthService {
         console.log('✅ User logged in:', user.email);
         return {
             access_token: await this.jwtService.signAsync(payload),
-            user: { id: user.id.toString(), email: user.email, name: user.name },
+            user: {
+                id: user.id.toString(),
+                email: user.email,
+                name: user.name,
+                authProvider: user.authProvider || 'email'
+            },
         };
     }
     async googleLogin(googleUser) {
@@ -100,6 +111,7 @@ let AuthService = class AuthService {
                     email: googleUser.email,
                     name: googleUser.name,
                     password: randomPassword,
+                    authProvider: 'google',
                 }).returning();
                 console.log('✅ New Google user created:', user.email);
             }
@@ -109,7 +121,12 @@ let AuthService = class AuthService {
             const payload = { sub: user.id, email: user.email };
             return {
                 access_token: await this.jwtService.signAsync(payload),
-                user: { id: user.id.toString(), email: user.email, name: user.name },
+                user: {
+                    id: user.id.toString(),
+                    email: user.email,
+                    name: user.name,
+                    authProvider: user.authProvider || 'google'
+                },
             };
         }
         catch (error) {
@@ -129,6 +146,7 @@ let AuthService = class AuthService {
             id: schema_1.users.id,
             email: schema_1.users.email,
             name: schema_1.users.name,
+            authProvider: schema_1.users.authProvider,
             createdAt: schema_1.users.createdAt,
         }).from(schema_1.users);
         return allUsers;

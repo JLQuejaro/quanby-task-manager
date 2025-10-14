@@ -5,6 +5,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }), // Removed .notNull() to allow null
   name: varchar('name', { length: 255 }).notNull(),
+  authProvider: varchar('auth_provider', { length: 20 }).default('email'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

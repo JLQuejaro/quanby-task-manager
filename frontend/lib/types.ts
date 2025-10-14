@@ -5,6 +5,8 @@ export interface User {
   name: string;
   createdAt: string;
   updatedAt: string;
+  hasPassword?: boolean;
+  authProvider?: 'email' | 'google';
 }
 
 // Task types

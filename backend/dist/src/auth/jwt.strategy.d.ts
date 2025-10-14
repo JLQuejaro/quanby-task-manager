@@ -12,6 +12,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
         id: number;
         email: string;
         name: string;
+        authProvider: string;
         createdAt: Date;
         updatedAt: Date;
     }>;

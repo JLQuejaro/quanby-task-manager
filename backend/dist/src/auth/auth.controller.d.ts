@@ -10,6 +10,7 @@ export declare class AuthController {
             id: string;
             email: string;
             name: string;
+            authProvider: string;
         };
     }>;
     login(loginDto: LoginDto): Promise<{
@@ -18,6 +19,7 @@ export declare class AuthController {
             id: string;
             email: string;
             name: string;
+            authProvider: string;
         };
     }>;
     googleAuth(req: Request): Promise<void>;
@@ -27,6 +29,7 @@ export declare class AuthController {
         id: number;
         email: string;
         name: string;
+        authProvider: string;
         createdAt: Date;
     }[]>;
     hasPassword(req: Request): Promise<{

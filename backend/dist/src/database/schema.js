@@ -7,6 +7,7 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     email: (0, pg_core_1.varchar)('email', { length: 255 }).notNull().unique(),
     password: (0, pg_core_1.varchar)('password', { length: 255 }),
     name: (0, pg_core_1.varchar)('name', { length: 255 }).notNull(),
+    authProvider: (0, pg_core_1.varchar)('auth_provider', { length: 20 }).default('email'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
 });

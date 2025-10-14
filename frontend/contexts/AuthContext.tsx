@@ -4,11 +4,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useRouter, usePathname } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { User } from '@/lib/types';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 interface AuthContextType {
   user: User | null;
   login: (credentials: { email: string; password: string }) => Promise<User>;
-  googleLogin: (credential: string) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
   setUser: (user: User | null) => void;
@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { addNotification } = useNotifications();
 
   // Check if user has set a password
   const checkPasswordStatus = async (): Promise<boolean> => {
@@ -62,7 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Check password status
           const hasPassword = await checkPasswordStatus();
           
-          setUser({ ...parsedUser, hasPassword });
+          const userData = { ...parsedUser, hasPassword };
+          setUser(userData);
           console.log('✅ User loaded from localStorage:', parsedUser.email);
           console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
           
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes
   useEffect(() => {
     if (!isLoading && !user) {
-      const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/callback'];
+      const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/callback', '/set-password'];
       const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
       
       if (!isPublicPath) {
@@ -113,6 +115,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('✅ User logged in:', response.user.email);
       console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
       
+      addNotification(
+        'auth_status',
+        'Welcome Back!',
+        `Successfully logged in as ${response.user.email}`,
+        undefined,
+        { action: 'login', email: response.user.email }
+      );
+      
       // Redirect based on password status
       if (!hasPassword) {
         router.push('/set-password');
@@ -123,60 +133,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return userData;
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      throw error;
-    }
-  };
-
-  const googleLogin = async (credential: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ credential }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Google login failed');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
       
-      // Check if user has password
-      const hasPassword = await checkPasswordStatus();
-      const userData = { ...data.user, hasPassword };
+      addNotification(
+        'auth_status',
+        'Login Failed',
+        error.response?.data?.message || error.message || 'Failed to log in. Please check your credentials.',
+        undefined,
+        { action: 'login_failed', email: credentials.email }
+      );
       
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      
-      console.log('✅ Google login successful:', data.user.email);
-      console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
-      
-      // Redirect to password setup for new users or users without password
-      if (!hasPassword) {
-        console.log('⚠️ Password not set, redirecting to setup page');
-        router.push('/set-password');
-      } else {
-        router.push('/dashboard');
-      }
-      
-      return userData;
-    } catch (error: any) {
-      console.error('❌ Google login error:', error);
       throw error;
     }
   };
 
   const logout = () => {
     const userEmail = user?.email || 'user';
+    const userName = user?.name || 'there';
     
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    console.log('👋 User logged out:', userEmail);
+    console.log('👋 User logged out');
+    
+    addNotification(
+      'auth_status',
+      'Logged Out',
+      `See you later, ${userName}! You've been successfully logged out.`,
+      undefined,
+      { action: 'logout', email: userEmail }
+    );
     
     router.push('/login');
   };
@@ -185,7 +170,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       login, 
-      googleLogin,
       logout, 
       isLoading, 
       setUser,

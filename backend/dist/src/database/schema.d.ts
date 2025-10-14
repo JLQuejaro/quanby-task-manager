@@ -76,6 +76,25 @@ export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
         }, {}, {
             length: 255;
         }>;
+        authProvider: import("drizzle-orm/pg-core").PgColumn<{
+            name: "auth_provider";
+            tableName: "users";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 20;
+        }>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "users";

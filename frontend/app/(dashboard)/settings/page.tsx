@@ -28,7 +28,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Move API_URL outside the component
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function SettingsPage() {
@@ -39,6 +38,7 @@ export default function SettingsPage() {
   
   const [hasPassword, setHasPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const isGoogleUser = user?.authProvider === 'google';
   
   // Password change form
   const [currentPassword, setCurrentPassword] = useState('');
@@ -73,14 +73,18 @@ export default function SettingsPage() {
           setHasPassword(data.hasPassword);
         }
 
-        // Load notification preferences
-        const savedPrefs = localStorage.getItem('notification_preferences');
-        if (savedPrefs) {
-          const prefs = JSON.parse(savedPrefs);
-          setEmailNotifications(prefs.emailNotifications ?? true);
-          setPushNotifications(prefs.pushNotifications ?? true);
-          setTaskReminders(prefs.taskReminders ?? true);
-          setDeadlineAlerts(prefs.deadlineAlerts ?? true);
+        // Load notification preferences - store per user
+        const userEmail = user?.email;
+        if (userEmail) {
+          const prefsKey = `notification_preferences_${userEmail}`;
+          const savedPrefs = localStorage.getItem(prefsKey);
+          if (savedPrefs) {
+            const prefs = JSON.parse(savedPrefs);
+            setEmailNotifications(prefs.emailNotifications ?? true);
+            setPushNotifications(prefs.pushNotifications ?? true);
+            setTaskReminders(prefs.taskReminders ?? true);
+            setDeadlineAlerts(prefs.deadlineAlerts ?? true);
+          }
         }
       } catch (error) {
         console.error('Failed to load user data:', error);
@@ -90,7 +94,7 @@ export default function SettingsPage() {
     };
 
     loadUserData();
-  }, []);
+  }, [user?.email]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,17 +199,6 @@ export default function SettingsPage() {
   const handleLogout = () => {
     const confirmed = window.confirm('Are you sure you want to log out?');
     if (confirmed) {
-      const userName = user?.name || 'there';
-      
-      // Show logout notification before clearing
-      addNotification(
-        'auth_status',
-        'Logged Out',
-        `See you later, ${userName}! You've been successfully logged out.`,
-        undefined,
-        { action: 'logout', email: user?.email }
-      );
-      
       logout();
     }
   };
@@ -240,7 +233,13 @@ export default function SettingsPage() {
       deadlineAlerts,
       [key]: value
     };
-    localStorage.setItem('notification_preferences', JSON.stringify(prefs));
+    
+    // Store preferences per user
+    const userEmail = user?.email;
+    if (userEmail) {
+      const prefsKey = `notification_preferences_${userEmail}`;
+      localStorage.setItem(prefsKey, JSON.stringify(prefs));
+    }
     
     // Show specific notification based on which preference changed
     const notificationMessages: { [key: string]: { title: string; message: string } } = {
@@ -313,6 +312,12 @@ export default function SettingsPage() {
                       <Mail className="h-4 w-4" />
                       {user?.email || 'user@example.com'}
                     </p>
+                    {isGoogleUser && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></span>
+                        Signed in with Google
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -346,16 +351,16 @@ export default function SettingsPage() {
               </div>
 
               {/* Info message for Google users without password */}
-              {!hasPassword && (
+              {isGoogleUser && !hasPassword && (
                 <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800">
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        You signed in with Google
+                        Google Account - Password Required
                       </p>
                       <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        Set a password to enable email/password login as an alternative to Google Sign-In.
+                        You signed in with Google. Set a password to enable email/password login as an alternative to Google Sign-In.
                       </p>
                     </div>
                   </div>

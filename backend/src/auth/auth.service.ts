@@ -25,6 +25,7 @@ export class AuthService {
       email: registerDto.email,
       password: hashedPassword,
       name: registerDto.name,
+      authProvider: 'email',
     }).returning();
 
     const payload = { sub: user.id, email: user.email };
@@ -32,7 +33,12 @@ export class AuthService {
     
     return {
       access_token: await this.jwtService.signAsync(payload),
-      user: { id: user.id.toString(), email: user.email, name: user.name },
+      user: { 
+        id: user.id.toString(), 
+        email: user.email, 
+        name: user.name,
+        authProvider: user.authProvider || 'email'
+      },
     };
   }
 
@@ -57,7 +63,12 @@ export class AuthService {
     
     return {
       access_token: await this.jwtService.signAsync(payload),
-      user: { id: user.id.toString(), email: user.email, name: user.name },
+      user: { 
+        id: user.id.toString(), 
+        email: user.email, 
+        name: user.name,
+        authProvider: user.authProvider || 'email'
+      },
     };
   }
 
@@ -78,6 +89,7 @@ export class AuthService {
           email: googleUser.email,
           name: googleUser.name,
           password: randomPassword, // Random password for OAuth users
+          authProvider: 'google',
         }).returning();
         
         console.log('✅ New Google user created:', user.email);
@@ -88,7 +100,12 @@ export class AuthService {
       const payload = { sub: user.id, email: user.email };
       return {
         access_token: await this.jwtService.signAsync(payload),
-        user: { id: user.id.toString(), email: user.email, name: user.name },
+        user: { 
+          id: user.id.toString(), 
+          email: user.email, 
+          name: user.name,
+          authProvider: user.authProvider || 'google'
+        },
       };
     } catch (error) {
       console.error('❌ Google login error:', error);
@@ -109,6 +126,7 @@ export class AuthService {
       id: users.id,
       email: users.email,
       name: users.name,
+      authProvider: users.authProvider,
       createdAt: users.createdAt,
       // Don't select password field for security
     }).from(users);
