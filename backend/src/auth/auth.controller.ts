@@ -69,6 +69,15 @@ export class AuthController {
     return this.authService.findAllUsers();
   }
 
+  @Get('has-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if user has password set' })
+  async hasPassword(@Req() req: Request) {
+    const user = (req as any).user;
+    return this.authService.hasPassword(user.id);
+  }
+
   @Post('set-password')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -82,4 +91,25 @@ export class AuthController {
     
     return this.authService.setPassword(user.id, body.password);
   }
-} 
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password for account' })
+  async changePassword(
+    @Req() req: Request, 
+    @Body() body: { oldPassword: string; newPassword: string }
+  ) {
+    const user = (req as any).user;
+    
+    if (!body.oldPassword || !body.newPassword) {
+      throw new UnauthorizedException('Both old and new passwords are required');
+    }
+    
+    if (body.newPassword.length < 6) {
+      throw new UnauthorizedException('New password must be at least 6 characters');
+    }
+    
+    return this.authService.changePassword(user.id, body.oldPassword, body.newPassword);
+  }
+}

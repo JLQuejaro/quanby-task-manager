@@ -64,13 +64,22 @@ let AuthService = class AuthService {
             password: hashedPassword,
             name: registerDto.name,
         }).returning();
-        const { password, ...result } = user;
-        console.log('✅ New user registered:', result.email);
-        return result;
+        const payload = { sub: user.id, email: user.email };
+        console.log('✅ New user registered:', user.email);
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+            user: { id: user.id.toString(), email: user.email, name: user.name },
+        };
     }
     async login(loginDto) {
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, loginDto.email));
-        if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
+        if (!user) {
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        if (!user.password) {
+            throw new common_1.UnauthorizedException('No password set. Please set a password first or use Google Sign-In.');
+        }
+        if (!(await bcrypt.compare(loginDto.password, user.password))) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         const payload = { sub: user.id, email: user.email };
@@ -88,7 +97,7 @@ let AuthService = class AuthService {
                 [user] = await db_1.db.insert(schema_1.users).values({
                     email: googleUser.email,
                     name: googleUser.name,
-                    password: await bcrypt.hash(Math.random().toString(36), 10),
+                    password: null,
                 }).returning();
                 console.log('✅ New Google user created:', user.email);
             }
@@ -134,7 +143,31 @@ let AuthService = class AuthService {
         const [user] = await db_1.db.select({ password: schema_1.users.password })
             .from(schema_1.users)
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
-        return user && user.password.length > 0;
+        return { hasPassword: user && user.password !== null && user.password.length > 0 };
+    }
+    async changePassword(userId, oldPassword, newPassword) {
+        const [user] = await db_1.db.select()
+            .from(schema_1.users)
+            .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        if (!user.password || user.password.length === 0) {
+            throw new common_1.UnauthorizedException('No password set. Use set password instead.');
+        }
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        if (oldPassword === newPassword) {
+            throw new common_1.UnauthorizedException('New password must be different from current password');
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db_1.db.update(schema_1.users)
+            .set({ password: hashedPassword })
+            .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        console.log('✅ Password changed for user ID:', userId);
+        return { message: 'Password changed successfully' };
     }
 };
 exports.AuthService = AuthService;

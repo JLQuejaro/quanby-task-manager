@@ -5,11 +5,12 @@ export declare class AuthController {
     private authService;
     constructor(authService: AuthService);
     register(registerDto: RegisterDto): Promise<{
-        id: number;
-        email: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
+        access_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+        };
     }>;
     login(loginDto: LoginDto): Promise<{
         access_token: string;
@@ -28,8 +29,17 @@ export declare class AuthController {
         name: string;
         createdAt: Date;
     }[]>;
+    hasPassword(req: Request): Promise<{
+        hasPassword: boolean;
+    }>;
     setPassword(req: Request, body: {
         password: string;
+    }): Promise<{
+        message: string;
+    }>;
+    changePassword(req: Request, body: {
+        oldPassword: string;
+        newPassword: string;
     }): Promise<{
         message: string;
     }>;

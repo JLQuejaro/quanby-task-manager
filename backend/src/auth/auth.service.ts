@@ -26,15 +26,28 @@ export class AuthService {
       name: registerDto.name,
     }).returning();
 
-    const { password, ...result } = user;
-    console.log('✅ New user registered:', result.email);
-    return result;
+    const payload = { sub: user.id, email: user.email };
+    console.log('✅ New user registered:', user.email);
+    
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+      user: { id: user.id.toString(), email: user.email, name: user.name },
+    };
   }
 
   async login(loginDto: LoginDto) {
     const [user] = await db.select().from(users).where(eq(users.email, loginDto.email));
     
-    if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Check if user has a password set
+    if (!user.password) {
+      throw new UnauthorizedException('No password set. Please set a password first or use Google Sign-In.');
+    }
+
+    if (!(await bcrypt.compare(loginDto.password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -59,7 +72,7 @@ export class AuthService {
         [user] = await db.insert(users).values({
           email: googleUser.email,
           name: googleUser.name,
-          password: await bcrypt.hash(Math.random().toString(36), 10), // Random password for Google users
+          password: null, // No password for Google users initially
         }).returning();
         console.log('✅ New Google user created:', user.email);
       } else {
@@ -110,11 +123,49 @@ export class AuthService {
   }
 
   // Check if user has a password set
-  async hasPassword(userId: number): Promise<boolean> {
+  async hasPassword(userId: number) {
     const [user] = await db.select({ password: users.password })
       .from(users)
       .where(eq(users.id, userId));
     
-    return user && user.password.length > 0;
+    return { hasPassword: user && user.password !== null && user.password.length > 0 };
+  }
+
+  // Change password for existing users
+  async changePassword(userId: number, oldPassword: string, newPassword: string) {
+    // Get user with password
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.password || user.password.length === 0) {
+      throw new UnauthorizedException('No password set. Use set password instead.');
+    }
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Check if new password is different
+    if (oldPassword === newPassword) {
+      throw new UnauthorizedException('New password must be different from current password');
+    }
+
+    // Hash and update new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, userId));
+    
+    console.log('✅ Password changed for user ID:', userId);
+    return { message: 'Password changed successfully' };
   }
 }

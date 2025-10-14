@@ -4,11 +4,12 @@ export declare class AuthService {
     private jwtService;
     constructor(jwtService: JwtService);
     register(registerDto: RegisterDto): Promise<{
-        id: number;
-        email: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
+        access_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+        };
     }>;
     login(loginDto: LoginDto): Promise<{
         access_token: string;
@@ -42,5 +43,10 @@ export declare class AuthService {
     setPassword(userId: number, newPassword: string): Promise<{
         message: string;
     }>;
-    hasPassword(userId: number): Promise<boolean>;
+    hasPassword(userId: number): Promise<{
+        hasPassword: boolean;
+    }>;
+    changePassword(userId: number, oldPassword: string, newPassword: string): Promise<{
+        message: string;
+    }>;
 }

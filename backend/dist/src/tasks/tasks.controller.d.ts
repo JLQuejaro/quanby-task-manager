@@ -15,37 +15,37 @@ export declare class TasksController {
         userId: number;
     }>;
     findAll(req: any): Promise<{
-        description: string;
         id: number;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
+        description: string;
         priority: string;
         deadline: Date;
         completed: boolean;
         userId: number;
+        createdAt: Date;
+        updatedAt: Date;
     }[]>;
     findOne(id: string, req: any): Promise<{
-        description: string;
         id: number;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
+        description: string;
         priority: string;
         deadline: Date;
         completed: boolean;
         userId: number;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(id: string, updateTaskDto: UpdateTaskDto, req: any): Promise<{
-        description: string;
         id: number;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
+        description: string;
         priority: string;
         deadline: Date;
         completed: boolean;
         userId: number;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     remove(id: string, req: any): Promise<{
         description: string;

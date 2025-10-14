@@ -3,11 +3,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authApi } from '@/lib/api';
-import { User } from '@/lib/types'; // ← Import User type from types.ts
+import { User } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
   setUser: (user: User | null) => void;
@@ -60,18 +60,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);
       console.log('✅ User logged in:', response.user.email);
+      
+      // Return user data for the calling component to handle notifications
       router.push('/dashboard');
-    } catch (error) {
+      return response.user;
+    } catch (error: any) {
       console.error('❌ Login error:', error);
       throw error;
     }
   };
 
   const logout = () => {
+    const userEmail = user?.email || 'user';
+    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
     console.log('👋 User logged out');
+    
     router.push('/login');
   };
 

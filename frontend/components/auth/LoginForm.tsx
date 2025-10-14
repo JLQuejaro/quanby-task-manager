@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, Eye, EyeOff, CheckSquare, Moon, Sun } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckSquare, Moon, Sun, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export function LoginForm() {
@@ -14,16 +15,45 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
+  const { addNotification } = useNotifications();
   const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     
     try {
-      await login({ email, password });
-    } catch (error) {
+      const user = await login({ email, password });
+      
+      // Show success notification
+      addNotification(
+        'auth_status',
+        'Welcome Back!',
+        `Successfully logged in as ${user.email}`,
+        undefined,
+        { action: 'login', email: user.email }
+      );
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
+      
+      if (errorMessage.toLowerCase().includes('password') || errorMessage.toLowerCase().includes('unauthorized')) {
+        setError('Wrong Password. Try Again');
+      } else {
+        setError(errorMessage);
+      }
+      
+      // Show error notification
+      addNotification(
+        'auth_status',
+        'Login Failed',
+        errorMessage,
+        undefined,
+        { action: 'login_failed', email }
+      );
+      
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);
@@ -32,7 +62,7 @@ export function LoginForm() {
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google OAuth endpoint
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/google`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/google`;
   };
 
   return (
@@ -71,6 +101,14 @@ export function LoginForm() {
         {/* Login Form */}
         <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm border border-gray-200 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 border border-red-200 dark:border-red-800">
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-900 dark:text-white">
@@ -109,7 +147,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -152,11 +190,8 @@ export function LoginForm() {
             {/* Google Login Button */}
             <Button
               type="button"
-              variant="outline"
-              className="w-full h-11 font-medium rounded-xl"
-              onClick={() => {
-                window.location.href = 'http://localhost:3001/api/auth/google';
-              }}
+              className="w-full h-11 font-medium rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={handleGoogleLogin}
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path

@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -28,8 +29,8 @@ interface HeaderProps {
 export function Header({ title, showSearch = true, searchValue = '', onSearchChange }: HeaderProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { unreadCount, addNotification } = useNotifications();
   const router = useRouter();
-  const [hasNotifications] = useState(true);
   const [localSearchValue, setLocalSearchValue] = useState(searchValue);
 
   const initials = user?.name
@@ -58,6 +59,22 @@ export function Header({ title, showSearch = true, searchValue = '', onSearchCha
     }
   };
 
+  const handleLogout = () => {
+    const userName = user?.name || 'there';
+    
+    // Show logout notification before clearing
+    addNotification(
+      'auth_status',
+      'Logged Out',
+      `See you later, ${userName}! You've been successfully logged out.`,
+      undefined,
+      { action: 'logout', email: user?.email }
+    );
+    
+    // Perform logout (AuthNotificationWrapper will handle clearing currentUserEmail)
+    logout();
+  };
+
   return (
     <header className="sticky top-0 z-10 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
       <div className="flex h-16 items-center justify-between px-6">
@@ -84,12 +101,14 @@ export function Header({ title, showSearch = true, searchValue = '', onSearchCha
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative hover:bg-gray-100  dark:hover:bg-gray-800 transition-colors rounded-xl"
+            className="relative hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-xl"
             onClick={handleNotifications}
           >
             <Bell className="h-5 w-5" />
-            {hasNotifications && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
             )}
           </Button>
 
@@ -165,7 +184,7 @@ export function Header({ title, showSearch = true, searchValue = '', onSearchCha
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={logout} 
+                onClick={handleLogout} 
                 className="cursor-pointer text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50"
               >
                 <LogOut className="mr-2 h-4 w-4" />

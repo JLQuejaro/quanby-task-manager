@@ -8,8 +8,23 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useState } from 'react';
+import { AuthNotificationWrapper } from '@/contexts/AuthNotificationWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
+
+function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <AuthNotificationWrapper>
+            {children}
+          </AuthNotificationWrapper>
+        </NotificationProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -22,23 +37,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <NotificationProvider>
-              <AuthProvider>
-                {children}
-                <Toaster 
-                  position="top-right"
-                  toastOptions={{
-                    className: 'dark:bg-gray-800 dark:text-gray-100',
-                    style: {
-                      borderRadius: '12px',
-                      padding: '16px',
-                    },
-                  }}
-                />
-              </AuthProvider>
-            </NotificationProvider>
-          </ThemeProvider>
+          <Providers>
+            {children}
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                className: 'dark:bg-gray-800 dark:text-gray-100',
+                style: {
+                  borderRadius: '12px',
+                  padding: '16px',
+                },
+              }}
+            />
+          </Providers>
         </QueryClientProvider>
       </body>
     </html>

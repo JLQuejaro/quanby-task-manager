@@ -13,35 +13,64 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   deleteNotification: (id: string) => void;
   clearAll: () => void;
+  currentUserEmail: string | null;
+  setCurrentUserEmail: (email: string | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  // Load notifications from localStorage on mount
+  // Get the storage key based on current user
+  const getStorageKey = (userEmail?: string) => {
+    if (!userEmail) return null;
+    return `notifications_${userEmail}`;
+  };
+
+  // Load notifications from localStorage when user email is set
   useEffect(() => {
-    const stored = localStorage.getItem('notifications');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setNotifications(parsed.map((n: any) => ({
-          ...n,
-          createdAt: new Date(n.createdAt)
-        })));
-      } catch (e) {
-        console.error('Failed to load notifications:', e);
+    if (!currentUserEmail) {
+      // No user logged in, clear notifications
+      setNotifications([]);
+      return;
+    }
+
+    const storageKey = getStorageKey(currentUserEmail);
+    if (storageKey) {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setNotifications(parsed.map((n: any) => ({
+            ...n,
+            createdAt: new Date(n.createdAt)
+          })));
+        } catch (e) {
+          console.error('Failed to load notifications:', e);
+          setNotifications([]);
+        }
+      } else {
+        // No notifications for this user yet
+        setNotifications([]);
       }
     }
-  }, []);
+  }, [currentUserEmail]);
 
   // Save notifications to localStorage whenever they change
   useEffect(() => {
-    if (notifications.length > 0) {
-      localStorage.setItem('notifications', JSON.stringify(notifications));
+    if (!currentUserEmail) return;
+
+    const storageKey = getStorageKey(currentUserEmail);
+    if (storageKey) {
+      if (notifications.length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(notifications));
+      } else {
+        localStorage.removeItem(storageKey);
+      }
     }
-  }, [notifications]);
+  }, [notifications, currentUserEmail]);
 
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
@@ -69,6 +98,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     taskId?: number,
     metadata?: Record<string, any>
   ) => {
+    // Only add notifications if user is logged in
+    if (!currentUserEmail) {
+      console.warn('Cannot add notification: No user logged in');
+      return;
+    }
+
     const notification: Notification = {
       id: `${Date.now()}-${Math.random()}`,
       type,
@@ -97,7 +132,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } else {
       toast(message, { icon, duration: 3000 });
     }
-  }, []);
+  }, [currentUserEmail]);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>
@@ -116,9 +151,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const clearAll = useCallback(() => {
+    if (!currentUserEmail) return;
+    
     setNotifications([]);
-    localStorage.removeItem('notifications');
-  }, []);
+    const storageKey = getStorageKey(currentUserEmail);
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+  }, [currentUserEmail]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -131,7 +171,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAsRead,
         markAllAsRead,
         deleteNotification,
-        clearAll
+        clearAll,
+        currentUserEmail,
+        setCurrentUserEmail
       }}
     >
       {children}

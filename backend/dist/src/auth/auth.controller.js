@@ -49,12 +49,26 @@ let AuthController = class AuthController {
     async getAllUsers() {
         return this.authService.findAllUsers();
     }
+    async hasPassword(req) {
+        const user = req.user;
+        return this.authService.hasPassword(user.id);
+    }
     async setPassword(req, body) {
         const user = req.user;
         if (!body.password || body.password.length < 6) {
             throw new common_1.UnauthorizedException('Password must be at least 6 characters');
         }
         return this.authService.setPassword(user.id, body.password);
+    }
+    async changePassword(req, body) {
+        const user = req.user;
+        if (!body.oldPassword || !body.newPassword) {
+            throw new common_1.UnauthorizedException('Both old and new passwords are required');
+        }
+        if (body.newPassword.length < 6) {
+            throw new common_1.UnauthorizedException('New password must be at least 6 characters');
+        }
+        return this.authService.changePassword(user.id, body.oldPassword, body.newPassword);
     }
 };
 exports.AuthController = AuthController;
@@ -111,6 +125,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getAllUsers", null);
 __decorate([
+    (0, common_1.Get)('has-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Check if user has password set' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "hasPassword", null);
+__decorate([
     (0, common_1.Post)('set-password'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
@@ -121,6 +145,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "setPassword", null);
+__decorate([
+    (0, common_1.Post)('change-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Change password for account' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "changePassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),

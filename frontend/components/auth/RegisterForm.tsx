@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, User, Eye, EyeOff, CheckSquare, Moon, Sun } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, CheckSquare, Moon, Sun, AlertCircle } from 'lucide-react';
+import { authApi } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
 export function RegisterForm() {
@@ -15,10 +18,13 @@ export function RegisterForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { register } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { addNotification } = useNotifications();
+  const { setUser } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,17 +43,46 @@ export function RegisterForm() {
     setIsLoading(true);
     
     try {
-      await register({ name, email, password });
+      const response = await authApi.register({ name, email, password });
+      
+      if (!response || !response.user) {
+        throw new Error('Invalid registration response');
+      }
+      
+      // Store token and user
+      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Update auth context
+      setUser(response.user);
+      
+      addNotification(
+        'auth_status',
+        'Account Created!',
+        `Welcome ${response.user.name}! Your account has been successfully created.`,
+        undefined,
+        { action: 'register', email: response.user.email }
+      );
+      
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Registration error:', error);
       let errorMessage = error.response?.data?.message || error.message || 'Registration failed. Please try again.';
       
       // Handle duplicate email error
-      if (error.response?.status === 500 && errorMessage.includes('duplicate key')) {
+      if (error.response?.status === 400 && errorMessage.includes('already exists')) {
         errorMessage = 'An account with this email already exists. Please login or use a different email.';
       }
       
       setError(errorMessage);
+      
+      addNotification(
+        'auth_status',
+        'Registration Failed',
+        errorMessage,
+        undefined,
+        { action: 'register_failed', email }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -90,8 +125,9 @@ export function RegisterForm() {
         <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm border border-gray-200 dark:border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-                {error}
+              <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-red-900/20 p-3 border border-red-200 dark:border-red-800">
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}
 
@@ -152,7 +188,7 @@ export function RegisterForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -172,13 +208,24 @@ export function RegisterForm() {
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 h-11 rounded-xl"
+                  className="pl-10 pr-10 h-11 rounded-xl"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
             </div>
 
