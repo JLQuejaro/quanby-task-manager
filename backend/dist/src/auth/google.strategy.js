@@ -16,23 +16,45 @@ const passport_1 = require("@nestjs/passport");
 const passport_google_oauth20_1 = require("passport-google-oauth20");
 let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrategy)(passport_google_oauth20_1.Strategy, 'google') {
     constructor(configService) {
+        const clientID = configService.get('GOOGLE_CLIENT_ID');
+        const clientSecret = configService.get('GOOGLE_CLIENT_SECRET');
+        const callbackURL = configService.get('GOOGLE_CALLBACK_URL');
+        console.log('🔧 Google Strategy Configuration:');
+        console.log('   Client ID:', clientID ? '✅ Set' : '❌ Missing');
+        console.log('   Client Secret:', clientSecret ? '✅ Set' : '❌ Missing');
+        console.log('   Callback URL:', callbackURL);
+        if (!clientID || !clientSecret || !callbackURL) {
+            throw new Error('Missing required Google OAuth environment variables');
+        }
         super({
-            clientID: configService.get('GOOGLE_CLIENT_ID'),
-            clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
-            callbackURL: configService.get('GOOGLE_CALLBACK_URL'),
+            clientID,
+            clientSecret,
+            callbackURL,
             scope: ['email', 'profile'],
         });
         this.configService = configService;
     }
     async validate(accessToken, refreshToken, profile, done) {
-        const { name, emails, photos } = profile;
-        const user = {
-            email: emails[0].value,
-            name: `${name.givenName} ${name.familyName}`,
-            picture: photos[0]?.value,
-            accessToken,
-        };
-        done(null, user);
+        try {
+            console.log('✅ Google profile received:', profile.emails[0]?.value);
+            const { name, emails, photos } = profile;
+            if (!emails || emails.length === 0) {
+                console.error('❌ No email found in Google profile');
+                return done(new Error('No email found in Google profile'), null);
+            }
+            const user = {
+                email: emails[0].value,
+                name: name ? `${name.givenName || ''} ${name.familyName || ''}`.trim() : 'User',
+                picture: photos?.[0]?.value,
+                accessToken,
+            };
+            console.log('✅ User validated:', user.email);
+            done(null, user);
+        }
+        catch (error) {
+            console.error('❌ Error validating Google user:', error);
+            done(error, null);
+        }
     }
 };
 exports.GoogleStrategy = GoogleStrategy;

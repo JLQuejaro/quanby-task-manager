@@ -4,6 +4,7 @@ import { db } from '../database/db';
 import { users } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { RegisterDto, LoginDto } from './dto/register.dto';
 
 @Injectable()
@@ -69,11 +70,16 @@ export class AuthService {
       // If user doesn't exist, create one
       if (!user) {
         console.log('🆕 Creating new Google user:', googleUser.email);
+        
+        // Generate a random password for OAuth users (won't be used, but satisfies DB constraint)
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+        
         [user] = await db.insert(users).values({
           email: googleUser.email,
           name: googleUser.name,
-          password: null, // No password for Google users initially
+          password: randomPassword, // Random password for OAuth users
         }).returning();
+        
         console.log('✅ New Google user created:', user.email);
       } else {
         console.log('✅ Existing Google user logged in:', user.email);

@@ -49,6 +49,7 @@ const db_1 = require("../database/db");
 const schema_1 = require("../database/schema");
 const drizzle_orm_1 = require("drizzle-orm");
 const bcrypt = __importStar(require("bcrypt"));
+const crypto = __importStar(require("crypto"));
 let AuthService = class AuthService {
     constructor(jwtService) {
         this.jwtService = jwtService;
@@ -94,10 +95,11 @@ let AuthService = class AuthService {
             let [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, googleUser.email));
             if (!user) {
                 console.log('🆕 Creating new Google user:', googleUser.email);
+                const randomPassword = crypto.randomBytes(32).toString('hex');
                 [user] = await db_1.db.insert(schema_1.users).values({
                     email: googleUser.email,
                     name: googleUser.name,
-                    password: null,
+                    password: randomPassword,
                 }).returning();
                 console.log('✅ New Google user created:', user.email);
             }
