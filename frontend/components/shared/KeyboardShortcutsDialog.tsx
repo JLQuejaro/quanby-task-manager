@@ -27,9 +27,7 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       title: 'Task Management',
       shortcuts: [
         { keys: ['N'], description: 'New Task' },
-        { keys: ['E'], description: 'Edit Task' },
-        { keys: ['Delete'], description: 'Delete Task' },
-        { keys: ['Space'], description: 'Toggle Complete' },
+        // Removed Edit, Delete, Toggle Complete - these are handled via UI buttons
       ],
     },
     {
@@ -52,7 +50,7 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       ],
     },
     {
-      title: 'Priority',
+      title: 'Priority Filters',
       shortcuts: [
         { keys: ['Shift', 'H'], description: 'High Priority' },
         { keys: ['Shift', 'M'], description: 'Medium Priority' },
@@ -63,15 +61,22 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       title: 'View & Display',
       shortcuts: [
         { keys: ['K'], description: 'Toggle Theme' },
-        { keys: ['R'], description: 'Refresh' },
+        { keys: ['Shift', 'R'], description: 'Refresh' },
         { keys: ['?'], description: 'Show Shortcuts' },
+      ],
+    },
+    {
+      title: 'Navigation',
+      shortcuts: [
+        { keys: ['Shift', 'D'], description: 'Dashboard' },
+        { keys: ['Shift', 'T'], description: 'Tasks Page' },
       ],
     },
     {
       title: 'Form Actions',
       shortcuts: [
-        { keys: ['Enter'], description: 'Submit' },
-        { keys: ['Esc'], description: 'Cancel' },
+        { keys: ['Ctrl', 'Enter'], description: 'Submit Form' },
+        { keys: ['Esc'], description: 'Cancel/Close' },
       ],
     },
   ];

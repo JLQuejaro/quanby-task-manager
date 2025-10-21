@@ -10,7 +10,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
  */
 export function AuthNotificationWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { setCurrentUserEmail } = useNotifications();
+  const { setCurrentUserEmail, stopDeadlineMonitoring } = useNotifications();
 
   // Sync user email whenever auth state changes
   useEffect(() => {
@@ -18,8 +18,9 @@ export function AuthNotificationWrapper({ children }: { children: React.ReactNod
       setCurrentUserEmail(user.email);
     } else {
       setCurrentUserEmail(null);
+      stopDeadlineMonitoring(); // Stop monitoring when user logs out
     }
-  }, [user?.email, setCurrentUserEmail]);
+  }, [user?.email, setCurrentUserEmail, stopDeadlineMonitoring]);
 
   return <>{children}</>;
 }

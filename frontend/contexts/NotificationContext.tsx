@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Notification, NotificationType } from '@/lib/notification';
+import { DynamicDeadlineNotifier, Task } from '@/lib/dynamic-deadline-notifier';
 import toast from 'react-hot-toast';
 import { CheckCircle2, AlertCircle, Info, Trash2, Bell, LogIn } from 'lucide-react';
 
@@ -15,6 +16,11 @@ interface NotificationContextType {
   clearAll: () => void;
   currentUserEmail: string | null;
   setCurrentUserEmail: (email: string | null) => void;
+  // Dynamic deadline notifier methods
+  startDeadlineMonitoring: (tasks: Task[]) => void;
+  stopDeadlineMonitoring: () => void;
+  updateMonitoredTasks: (tasks: Task[]) => void;
+  notifier: DynamicDeadlineNotifier | null;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -22,6 +28,9 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [monitoredTasks, setMonitoredTasks] = useState<Task[]>([]);
+  const notifierRef = useRef<DynamicDeadlineNotifier | null>(null);
+  const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get the storage key based on current user
   const getStorageKey = (userEmail?: string) => {
@@ -29,10 +38,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return `notifications_${userEmail}`;
   };
 
-  // Load notifications from localStorage when user email is set
+  // Initialize the dynamic deadline notifier
+  useEffect(() => {
+    if (!notifierRef.current) {
+      notifierRef.current = new DynamicDeadlineNotifier(
+        (type, title, message, taskId, displayDuration) => {
+          // Add to in-app notifications (only for important deadline reminders)
+          addNotification(type, title, message, taskId);
+          
+          // Show toast with custom duration
+          const icon = getNotificationIcon(type);
+          if (type === 'overdue_alert') {
+            toast.error(message, { icon, duration: displayDuration });
+          } else {
+            toast(message, { icon, duration: displayDuration });
+          }
+        }
+      );
+    }
+  }, []);
+
+  // Load notifications when user email changes
   useEffect(() => {
     if (!currentUserEmail) {
-      // No user logged in, clear notifications
       setNotifications([]);
       return;
     }
@@ -52,13 +80,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           setNotifications([]);
         }
       } else {
-        // No notifications for this user yet
         setNotifications([]);
       }
     }
   }, [currentUserEmail]);
 
-  // Save notifications to localStorage whenever they change
+  // Save notifications to storage
   useEffect(() => {
     if (!currentUserEmail) return;
 
@@ -71,6 +98,56 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     }
   }, [notifications, currentUserEmail]);
+
+  // Start monitoring tasks for deadline notifications
+  const startDeadlineMonitoring = useCallback((tasks: Task[]) => {
+    setMonitoredTasks(tasks);
+    
+    // Clear existing interval if any
+    if (monitoringIntervalRef.current) {
+      clearInterval(monitoringIntervalRef.current);
+    }
+
+    // Check tasks every 2 minutes
+    monitoringIntervalRef.current = setInterval(() => {
+      if (notifierRef.current) {
+        notifierRef.current.checkMultipleTasks(tasks);
+      }
+    }, 120000); // 2 minutes
+
+    // Also check immediately
+    if (notifierRef.current) {
+      notifierRef.current.checkMultipleTasks(tasks);
+    }
+  }, []);
+
+  // Stop monitoring
+  const stopDeadlineMonitoring = useCallback(() => {
+    if (monitoringIntervalRef.current) {
+      clearInterval(monitoringIntervalRef.current);
+      monitoringIntervalRef.current = null;
+    }
+    if (notifierRef.current) {
+      notifierRef.current.clearAllHistory();
+    }
+  }, []);
+
+  // Update the monitored tasks
+  const updateMonitoredTasks = useCallback((tasks: Task[]) => {
+    setMonitoredTasks(tasks);
+  }, []);
+
+  // Auto-restart monitoring when tasks change
+  useEffect(() => {
+    if (monitoredTasks.length > 0 && currentUserEmail) {
+      startDeadlineMonitoring(monitoredTasks);
+    }
+    return () => {
+      if (monitoringIntervalRef.current) {
+        clearInterval(monitoringIntervalRef.current);
+      }
+    };
+  }, [monitoredTasks, currentUserEmail]);
 
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
@@ -98,11 +175,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     taskId?: number,
     metadata?: Record<string, any>
   ) => {
-    // Only add notifications if user is logged in
     if (!currentUserEmail) {
       console.warn('Cannot add notification: No user logged in');
       return;
     }
+
+    // Only add to in-app notifications if it's important
+    // Skip task_created, task_updated for in-app to reduce clutter
+    const shouldAddToInApp = ![
+      'task_created',
+      'task_updated'
+    ].includes(type);
 
     const notification: Notification = {
       id: `${Date.now()}-${Math.random()}`,
@@ -116,7 +199,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       metadata
     };
 
-    setNotifications(prev => [notification, ...prev]);
+    // Only add important notifications to the in-app list
+    if (shouldAddToInApp) {
+      setNotifications(prev => [notification, ...prev]);
+    }
 
     // Show toast notification with icon
     const icon = getNotificationIcon(type);
@@ -173,7 +259,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         deleteNotification,
         clearAll,
         currentUserEmail,
-        setCurrentUserEmail
+        setCurrentUserEmail,
+        startDeadlineMonitoring,
+        stopDeadlineMonitoring,
+        updateMonitoredTasks,
+        notifier: notifierRef.current
       }}
     >
       {children}

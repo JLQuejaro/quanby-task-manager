@@ -1,5 +1,4 @@
 'use client';
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/lib/api';
 import { Task } from '@/lib/types';
@@ -9,7 +8,6 @@ import { useEffect } from 'react';
 export function useTasks() {
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
-
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['tasks'],
     queryFn: tasksApi.getAll,
@@ -85,8 +83,8 @@ export function useTasks() {
       addNotification(
         'task_completed',
         completed ? 'Task Completed' : 'Task Reopened',
-        completed 
-          ? `"${updatedTask.title}" has been marked as complete` 
+        completed
+          ? `"${updatedTask.title}" has been marked as complete`
           : `"${updatedTask.title}" has been reopened`,
         updatedTask.id
       );
@@ -104,33 +102,43 @@ export function useTasks() {
     toggleCompleteMutation.mutate({ id, completed });
   };
 
+  const softDeleteTask = (id: number) => {
+    const taskToDelete = tasks.find(t => t.id === id);
+    if (!taskToDelete) return;
+
+    updateMutation.mutate({
+      id: taskToDelete.id,
+      data: {
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+      },
+    });
+  };
+
   const deleteTask = (id: number) => {
     const confirmed = window.confirm(
-      'Are you sure you want to delete this task? This action cannot be undone.'
+      'Are you sure you want to permanently delete this task? This action cannot be undone.'
     );
-    
+
     if (confirmed) {
       deleteMutation.mutate(id);
     }
   };
 
-  // ✅ FIXED: Check for deadline reminders and overdue tasks - IMMEDIATE NOTIFICATION
+  // Deadline reminders and overdue tasks
   useEffect(() => {
     if (!tasks.length) return;
-
     const checkDeadlines = () => {
       const now = new Date();
       const notifiedKey = 'notified_tasks';
       const notified = JSON.parse(localStorage.getItem(notifiedKey) || '{}');
-
       tasks.forEach(task => {
-        if (task.completed || !task.deadline) return;
-
+        if (task.completed || !task.deadline || task.isDeleted) return;
         const deadline = new Date(task.deadline);
         const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
         const taskKey = `${task.id}_${task.deadline}`;
-        
-        // ✅ 24-hour reminder (only notify once per task+deadline combo)
+
+        // 24-hour reminder
         if (hoursUntilDeadline > 0 && hoursUntilDeadline <= 24) {
           if (!notified[`reminder_${taskKey}`]) {
             addNotification(
@@ -144,8 +152,8 @@ export function useTasks() {
             localStorage.setItem(notifiedKey, JSON.stringify(notified));
           }
         }
-        
-        // ✅ Overdue alert (only notify once per task+deadline combo)
+
+        // Overdue alert
         if (hoursUntilDeadline < 0) {
           if (!notified[`overdue_${taskKey}`]) {
             const hoursOverdue = Math.abs(Math.round(hoursUntilDeadline));
@@ -163,12 +171,8 @@ export function useTasks() {
       });
     };
 
-    // ✅ Check immediately on mount
     checkDeadlines();
-    
-    // ✅ Then check every 30 minutes (instead of every hour)
     const interval = setInterval(checkDeadlines, 30 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, [tasks, addNotification]);
 
@@ -178,6 +182,7 @@ export function useTasks() {
     error,
     createTask: createMutation.mutate,
     updateTask: updateMutation.mutate,
+    softDeleteTask,
     deleteTask,
     toggleComplete,
   };

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface KeyboardShortcutOptions {
   key: string;
@@ -10,115 +10,67 @@ interface KeyboardShortcutOptions {
   enabled?: boolean;
 }
 
+// Helper: Check if the event matches the shortcut
+const matchesShortcut = (
+  e: KeyboardEvent,
+  { key, ctrlKey = false, shiftKey = false, altKey = false, metaKey = false }: KeyboardShortcutOptions
+) => {
+  const matchesKey = e.key.toLowerCase() === key.toLowerCase();
+  const matchesCtrl = ctrlKey ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
+  const matchesShift = shiftKey ? e.shiftKey : !e.shiftKey;
+  const matchesAlt = altKey ? e.altKey : !e.altKey;
+  return matchesKey && matchesCtrl && matchesShift && matchesAlt;
+};
+
+// Helper: Check if the event target is an input field
+const isInputField = (target: HTMLElement) =>
+  target.tagName === 'INPUT' ||
+  target.tagName === 'TEXTAREA' ||
+  target.isContentEditable ||
+  target.closest('[contenteditable="true"]');
+
 /**
- * Custom hook for keyboard shortcuts
- * @param callback - Function to execute when shortcut is triggered
- * @param options - Shortcut configuration
+ * Custom hook for a single keyboard shortcut
  */
 export function useKeyboardShortcut(
   callback: (e: KeyboardEvent) => void,
   options: KeyboardShortcutOptions
 ) {
-  const {
-    key,
-    ctrlKey = false,
-    shiftKey = false,
-    altKey = false,
-    metaKey = false,
-    preventDefault = true,
-    enabled = true,
-  } = options;
-
+  const { key, preventDefault = true, enabled = true } = options;
   const callbackRef = useRef(callback);
 
-  // Update callback ref when it changes
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!enabled) return;
-
-      // Ignore shortcuts when typing in input fields, textareas, or contenteditable elements
-      const target = e.target as HTMLElement;
-      const isInputField = 
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable ||
-        target.closest('[contenteditable="true"]');
-
-      // Only allow certain shortcuts (like Escape) in input fields
-      const allowedInInputs = ['Escape', 'Enter'];
-      if (isInputField && !allowedInInputs.includes(key) && !ctrlKey && !metaKey) {
-        return;
-      }
-
-      const matchesKey = e.key.toLowerCase() === key.toLowerCase();
-      
-      // For Ctrl key, check both ctrlKey and metaKey (Mac Command key)
-      const matchesCtrl = ctrlKey ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
-      const matchesShift = shiftKey ? e.shiftKey : !e.shiftKey;
-      const matchesAlt = altKey ? e.altKey : !e.altKey;
-
-      if (matchesKey && matchesCtrl && matchesShift && matchesAlt) {
-        // Always prevent default for our custom shortcuts
-        if (preventDefault) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        callbackRef.current(e);
-      }
-    },
-    [key, ctrlKey, shiftKey, altKey, metaKey, preventDefault, enabled]
-  );
 
   useEffect(() => {
     if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore shortcuts when typing in input fields, textareas, or contenteditable elements
       const target = e.target as HTMLElement;
-      const isInputField = 
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable ||
-        target.closest('[contenteditable="true"]');
+      const allowedInInputs = ['Escape'];
+      const isCtrlEnter = key === 'Enter' && (options.ctrlKey || e.ctrlKey || e.metaKey);
 
-      // Only allow certain shortcuts (like Escape) in input fields
-      const allowedInInputs = ['Escape', 'Enter'];
-      if (isInputField && !allowedInInputs.includes(key) && !ctrlKey && !metaKey) {
+      if (isInputField(target) && !allowedInInputs.includes(key) && !isCtrlEnter) {
         return;
       }
 
-      const matchesKey = e.key.toLowerCase() === key.toLowerCase();
-      
-      // For Ctrl key, check both ctrlKey and metaKey (Mac Command key)
-      const matchesCtrl = ctrlKey ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
-      const matchesShift = shiftKey ? e.shiftKey : !e.shiftKey;
-      const matchesAlt = altKey ? e.altKey : !e.altKey;
-
-      if (matchesKey && matchesCtrl && matchesShift && matchesAlt) {
-        // Prevent default BEFORE calling callback
+      if (matchesShortcut(e, options)) {
         if (preventDefault) {
           e.preventDefault();
           e.stopPropagation();
-          e.stopImmediatePropagation();
         }
         callbackRef.current(e);
-        return false;
       }
     };
 
-    // Add event listener in capture phase with high priority
     document.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [handleKeyDown, enabled]);
+  }, [key, options.ctrlKey, options.shiftKey, options.altKey, options.metaKey, preventDefault, enabled]);
 }
 
 /**
- * Hook for multiple keyboard shortcuts
- * @param shortcuts - Array of shortcut configurations
+ * Custom hook for multiple keyboard shortcuts
  */
 export function useKeyboardShortcuts(
   shortcuts: Array<{
@@ -134,55 +86,28 @@ export function useKeyboardShortcuts(
 ) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore shortcuts when typing in input fields, textareas, or contenteditable elements
       const target = e.target as HTMLElement;
-      const isInputField = 
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable ||
-        target.closest('[contenteditable="true"]');
-
       shortcuts.forEach((shortcut) => {
-        const {
-          key,
-          callback,
-          ctrlKey = false,
-          shiftKey = false,
-          altKey = false,
-          preventDefault = true,
-          enabled = true,
-        } = shortcut;
-
+        const { key, callback, enabled = true, preventDefault = true } = shortcut;
         if (!enabled) return;
 
-        // Only allow certain shortcuts (like Escape, Enter with Ctrl) in input fields
         const allowedInInputs = ['Escape'];
-        const isCtrlEnter = key === 'Enter' && (ctrlKey || e.ctrlKey || e.metaKey);
-        
-        if (isInputField && !allowedInInputs.includes(key) && !isCtrlEnter && !ctrlKey && !(e.ctrlKey || e.metaKey)) {
+        const isCtrlEnter = key === 'Enter' && (shortcut.ctrlKey || e.ctrlKey || e.metaKey);
+
+        if (isInputField(target) && !allowedInInputs.includes(key) && !isCtrlEnter) {
           return;
         }
 
-        const matchesKey = e.key.toLowerCase() === key.toLowerCase();
-        
-        // For Ctrl key, check both ctrlKey and metaKey (Mac Command key)
-        const matchesCtrl = ctrlKey ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
-        const matchesShift = shiftKey ? e.shiftKey : !e.shiftKey;
-        const matchesAlt = altKey ? e.altKey : !e.altKey;
-
-        if (matchesKey && matchesCtrl && matchesShift && matchesAlt) {
-          // Prevent default BEFORE calling callback
+        if (matchesShortcut(e, shortcut)) {
           if (preventDefault) {
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
           }
           callback(e);
         }
       });
     };
 
-    // Add event listener in capture phase with high priority
     document.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [shortcuts]);
@@ -194,38 +119,38 @@ export function useKeyboardShortcuts(
 export const KeyboardShortcuts = {
   // Task Management
   NEW_TASK: { key: 'n', preventDefault: true },
-  EDIT_TASK: { key: 'e', preventDefault: true },
-  DELETE_TASK: { key: 'Delete', preventDefault: true },
-  TOGGLE_COMPLETE: { key: ' ', preventDefault: true }, // Spacebar
   SEARCH: { key: '/', preventDefault: true },
-  
+
   // Form Actions
-  SUBMIT: { key: 'Enter', ctrlKey: true, preventDefault: true }, // Keep Ctrl+Enter for forms
+  SUBMIT: { key: 'Enter', ctrlKey: true, preventDefault: true },
   CANCEL: { key: 'Escape', preventDefault: true },
-  
-  // Navigation (removed Ctrl shortcuts)
-  DASHBOARD: { key: 'd', shiftKey: true, preventDefault: true }, // Shift+D
-  TASKS_PAGE: { key: 't', shiftKey: true, preventDefault: true }, // Shift+T
-  
+
+  // Navigation
+  DASHBOARD: { key: 'd', shiftKey: true, preventDefault: true },
+  TASKS_PAGE: { key: 't', shiftKey: true, preventDefault: true },
+
   // Calendar Navigation
   PREVIOUS_MONTH: { key: 'ArrowLeft', preventDefault: true },
   NEXT_MONTH: { key: 'ArrowRight', preventDefault: true },
   GO_TO_TODAY: { key: 't', preventDefault: true },
-  
-  // Filters (single numbers without Ctrl)
+
+  // Filters
   FILTER_ALL: { key: '1', preventDefault: true },
   FILTER_TODAY: { key: '2', preventDefault: true },
   FILTER_TOMORROW: { key: '3', preventDefault: true },
   FILTER_UPCOMING: { key: '4', preventDefault: true },
   FILTER_COMPLETED: { key: '5', preventDefault: true },
-  
-  // Priority
+
+  // Priority Filters
   SET_HIGH_PRIORITY: { key: 'h', shiftKey: true, preventDefault: true },
   SET_MEDIUM_PRIORITY: { key: 'm', shiftKey: true, preventDefault: true },
   SET_LOW_PRIORITY: { key: 'l', shiftKey: true, preventDefault: true },
-  
+
   // View/Display
   TOGGLE_THEME: { key: 'k', preventDefault: true },
-  REFRESH: { key: 'r', shiftKey: true, preventDefault: true }, // Shift+R
+  REFRESH: { key: 'r', shiftKey: true, preventDefault: true },
   HELP: { key: '?', shiftKey: true, preventDefault: true },
 } as const;
+
+// Export the type for the shortcuts
+export type KeyboardShortcut = typeof KeyboardShortcuts[keyof typeof KeyboardShortcuts];

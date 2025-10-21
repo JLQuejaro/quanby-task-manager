@@ -20,6 +20,8 @@ export interface Task {
   userId: number;
   createdAt: string;
   updatedAt: string;
+  isDeleted: boolean;
+  deletedAt?: string;
 }
 
 // Auth types

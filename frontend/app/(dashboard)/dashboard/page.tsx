@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
 
-  // Keyboard shortcuts - REMOVED ALL CTRL SHORTCUTS
+  // Keyboard shortcuts
   useKeyboardShortcuts([
     {
       key: 'n',
@@ -80,6 +80,7 @@ export default function DashboardPage() {
     },
     {
       key: 'r',
+      shiftKey: true,
       callback: () => window.location.reload(),
       preventDefault: true,
     },
@@ -119,13 +120,11 @@ export default function DashboardPage() {
         const taskPriority = task.priority.toLowerCase();
         const taskContent = `${taskTitle} ${taskDescription} ${taskPriority}`;
         
-        // Check if all search terms are found in the task
         return searchTerms.every(term => 
           taskContent.includes(term)
         );
       });
       
-      // Sort by relevance: prioritize title matches
       filtered.sort((a, b) => {
         const aTitle = a.title.toLowerCase();
         const bTitle = b.title.toLowerCase();

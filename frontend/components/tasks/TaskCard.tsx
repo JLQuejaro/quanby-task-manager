@@ -1,19 +1,21 @@
+// src/components/tasks/TaskCard.tsx
 'use client';
-
+import { useState } from 'react';
 import { Task } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { PriorityBadge } from '@/components/shared/PriorityBadge';
-import { DateDisplay } from '@/components/shared/DateDisplay';
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MoreVertical, Pencil, Trash2, Calendar, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format, parseISO, isPast } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -22,72 +24,150 @@ interface TaskCardProps {
   onDelete: (id: number) => void;
 }
 
-export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) {
+const priorityConfig = {
+  high: { color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', label: 'High' },
+  medium: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', label: 'Medium' },
+  low: { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', label: 'Low' },
+};
+
+const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  /**
+   * Handle Delete Click
+   * 
+   * Opens confirmation dialog before soft-deleting the task.
+   * Soft-delete means setting isDeleted=true and deletedAt=timestamp,
+   * moving the task to trash bin instead of permanently deleting it.
+   */
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+  };
+
+  /**
+   * Confirm Soft Delete
+   * 
+   * This moves the task to trash (soft delete) by:
+   * 1. Setting isDeleted flag to true
+   * 2. Recording deletedAt timestamp
+   * 3. Task will remain in trash for 30 days before auto-deletion
+   * 
+   * Users can restore the task from trash within 30 days.
+   */
+  const confirmDelete = () => {
+    onDelete(task.id); // This should soft-delete, not permanent delete
+    setShowDeleteDialog(false);
+  };
+
+  const isOverdue = task.deadline && !task.completed && isPast(parseISO(task.deadline));
+
   return (
-    <Card className={cn(
-      'p-4 hover:shadow-md transition-shadow rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900',
-      task.completed && 'opacity-60'
-    )}>
-      <div className="flex items-start gap-3">
-        {/* Checkbox */}
-        <Checkbox
-          checked={task.completed}
-          onCheckedChange={(checked) => onToggleComplete(task.id, checked as boolean)}
-          className="mt-1"
-        />
+    <>
+      <Card className={cn(
+        'p-4 hover:shadow-md transition-shadow rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900',
+        task.completed && 'opacity-60',
+        isOverdue && 'border-l-4 border-l-red-500'
+      )}>
+        <div className="flex items-start gap-3">
+          <Checkbox
+            checked={task.completed}
+            onCheckedChange={(checked) => onToggleComplete(task.id, !!checked)}
+            className="mt-1"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                {/* Title */}
+                <h3 className={cn(
+                  'font-medium text-gray-900 dark:text-gray-100',
+                  task.completed && 'line-through text-gray-500 dark:text-gray-400'
+                )}>
+                  {task.title}
+                </h3>
 
-        {/* Task Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <h3 className={cn(
-                'font-medium text-gray-900 dark:text-gray-100',
-                task.completed && 'line-through text-gray-500 dark:text-gray-400'
-              )}>
-                {task.title}
-              </h3>
-              {task.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{task.description}</p>
-              )}
+                {/* Description */}
+                {task.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {task.description}
+                  </p>
+                )}
+
+                {/* Meta Information */}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {/* Priority Badge */}
+                  {task.priority && (
+                    <Badge
+                      variant="secondary"
+                      className={cn('text-xs font-medium', priorityConfig[task.priority as keyof typeof priorityConfig]?.color)}
+                    >
+                      {priorityConfig[task.priority as keyof typeof priorityConfig]?.label || task.priority}
+                    </Badge>
+                  )}
+
+                  {/* Deadline */}
+                  {task.deadline && (
+                    <div className={cn(
+                      'flex items-center gap-1 text-xs',
+                      isOverdue
+                        ? 'text-red-600 dark:text-red-500 font-medium'
+                        : 'text-gray-500 dark:text-gray-500'
+                    )}>
+                      <Calendar className="w-3 h-3" />
+                      <span>{format(parseISO(task.deadline), 'MMM d, yyyy')}</span>
+                      {isOverdue && <span className="ml-1">(Overdue)</span>}
+                    </div>
+                  )}
+
+                  {/* Created At */}
+                  {task.createdAt && (
+                    <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-600">
+                      <Clock className="w-3 h-3" />
+                      <span>Created {format(parseISO(task.createdAt), 'MMM d, yyyy')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md rounded-xl">
+                  <DropdownMenuItem
+                    onClick={() => onEdit(task)}
+                    className="hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-800 focus:text-gray-900 dark:focus:text-gray-100"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer focus:bg-red-50 dark:focus:bg-red-950/30 focus:text-red-700 dark:focus:text-red-300"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-
-            {/* More Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md rounded-xl">
-                <DropdownMenuItem 
-                  onClick={() => onEdit(task)}
-                  className="hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-800 focus:text-gray-900 dark:focus:text-gray-100"
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(task.id)}
-                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer focus:bg-red-50 dark:focus:bg-red-950/30 focus:text-red-700 dark:focus:text-red-300"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Task Meta */}
-          <div className="flex items-center gap-3 mt-3">
-            <PriorityBadge priority={task.priority} />
-            <DateDisplay deadline={task.deadline} completed={task.completed} />
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={confirmDelete}
+        taskTitle={task.title}
+      />
+    </>
   );
-}
+};
+
+export default TaskCard;
