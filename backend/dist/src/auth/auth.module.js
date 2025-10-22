@@ -16,6 +16,7 @@ const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const google_strategy_1 = require("./google.strategy");
 const google_auth_guard_1 = require("./google-auth.guard");
+const password_reset_service_1 = require("./password-reset.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -34,7 +35,13 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, google_strategy_1.GoogleStrategy, google_auth_guard_1.GoogleAuthGuard],
+        providers: [
+            auth_service_1.AuthService,
+            jwt_strategy_1.JwtStrategy,
+            google_strategy_1.GoogleStrategy,
+            google_auth_guard_1.GoogleAuthGuard,
+            password_reset_service_1.PasswordResetService,
+        ],
         exports: [auth_service_1.AuthService, google_auth_guard_1.GoogleAuthGuard],
     })
 ], AuthModule);

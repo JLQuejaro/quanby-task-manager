@@ -7,10 +7,11 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { GoogleAuthGuard } from './google-auth.guard';
+import { PasswordResetService } from './password-reset.service';
 
 @Module({
   imports: [
-    ConfigModule, // Add this to use ConfigService
+    ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -22,7 +23,13 @@ import { GoogleAuthGuard } from './google-auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GoogleAuthGuard],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    GoogleStrategy, 
+    GoogleAuthGuard,
+    PasswordResetService, // ✅ Add this
+  ],
   exports: [AuthService, GoogleAuthGuard],
 })
 export class AuthModule {}

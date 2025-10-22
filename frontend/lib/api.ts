@@ -43,6 +43,16 @@ export const authApi = {
     const { data } = await api.post('/api/auth/login', credentials);
     return data;
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    const { data } = await api.post('/api/auth/forgot-password', { email });
+    return data;
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
+    const { data } = await api.post('/api/auth/reset-password', { token, newPassword });
+    return data;
+  },
 };
 
 // Tasks API

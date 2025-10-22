@@ -17,11 +17,15 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
+const forgot_password_dto_1 = require("./dto/forgot-password.dto");
+const reset_password_dto_1 = require("./dto/reset-password.dto");
 const google_auth_guard_1 = require("./google-auth.guard");
 const jwt_auth_guard_1 = require("./jwt-auth.guard");
+const password_reset_service_1 = require("./password-reset.service");
 let AuthController = class AuthController {
-    constructor(authService) {
+    constructor(authService, passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
     register(registerDto) {
         return this.authService.register(registerDto);
@@ -69,6 +73,12 @@ let AuthController = class AuthController {
             throw new common_1.UnauthorizedException('New password must be at least 6 characters');
         }
         return this.authService.changePassword(user.id, body.oldPassword, body.newPassword);
+    }
+    async forgotPassword(forgotPasswordDto) {
+        return this.passwordResetService.forgotPassword(forgotPasswordDto.email);
+    }
+    async resetPassword(resetPasswordDto) {
+        return this.passwordResetService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
     }
 };
 exports.AuthController = AuthController;
@@ -156,9 +166,28 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "changePassword", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Request password reset email' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Reset password with token' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [reset_password_dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('auth'),
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [auth_service_1.AuthService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        password_reset_service_1.PasswordResetService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

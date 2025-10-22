@@ -14,12 +14,17 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/nodemailer": "^7.0.2",
     "concurrently": "^9.2.1"
   },
   "dependencies": {
     "@radix-ui/react-switch": "^1.2.6",
+    "@sendgrid/mail": "^8.1.6",
+    "bcryptjs": "^3.0.2",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
-    "next-auth": "^4.24.11"
+    "next-auth": "^4.24.11",
+    "nodemailer": "^6.10.1"
   }
 }

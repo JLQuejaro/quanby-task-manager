@@ -20,6 +20,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // API URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Public paths that don't require authentication
+const PUBLIC_PATHS = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',  // Added this!
+  '/auth/callback',
+  '/callback',
+  '/set-password'
+];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,8 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
           
           // Redirect to password setup if needed
-          const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/callback', '/set-password'];
-          const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+          const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
           
           if (!hasPassword && !isPublicPath) {
             console.log('⚠️ Password not set, redirecting to setup page');
@@ -91,8 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Protect routes
   useEffect(() => {
     if (!isLoading && !user) {
-      const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/callback', '/set-password'];
-      const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+      const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
       
       if (!isPublicPath) {
         console.log('⚠️ No user found, redirecting to login');
