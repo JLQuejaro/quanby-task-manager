@@ -1,24 +1,34 @@
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto, LoginDto } from './dto/register.dto';
+import { EmailVerificationService } from './email-verification.service';
+import { SecurityLogService } from './security-log.service';
+import { RateLimitService } from './rate-limit.service';
 export declare class AuthService {
     private jwtService;
-    constructor(jwtService: JwtService);
-    register(registerDto: RegisterDto): Promise<{
+    private emailVerificationService;
+    private securityLogService;
+    private rateLimitService;
+    private pool;
+    constructor(jwtService: JwtService, emailVerificationService: EmailVerificationService, securityLogService: SecurityLogService, rateLimitService: RateLimitService);
+    register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string): Promise<{
         access_token: string;
         user: {
             id: string;
             email: string;
             name: string;
             authProvider: string;
+            emailVerified: boolean;
         };
+        message: string;
     }>;
-    login(loginDto: LoginDto): Promise<{
+    login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{
         access_token: string;
         user: {
             id: string;
             email: string;
             name: string;
             authProvider: string;
+            emailVerified: boolean;
         };
     }>;
     googleLogin(googleUser: any): Promise<{
@@ -35,6 +45,10 @@ export declare class AuthService {
         email: string;
         name: string;
         authProvider: string;
+        googleId: string;
+        emailVerified: boolean;
+        verificationToken: string;
+        lastPasswordChange: Date;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -43,15 +57,19 @@ export declare class AuthService {
         email: string;
         name: string;
         authProvider: string;
+        emailVerified: boolean;
         createdAt: Date;
     }[]>;
-    setPassword(userId: number, newPassword: string): Promise<{
+    setPassword(userId: number, newPassword: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
     hasPassword(userId: number): Promise<{
         hasPassword: boolean;
     }>;
-    changePassword(userId: number, oldPassword: string, newPassword: string): Promise<{
+    changePassword(userId: number, currentPassword: string, newPassword: string, newPasswordConfirm: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
+    private validatePasswordStrength;
+    private createSession;
+    private revokeAllUserSessions;
 }

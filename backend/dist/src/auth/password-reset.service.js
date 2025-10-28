@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PasswordResetService = void 0;
 const common_1 = require("@nestjs/common");
 const pg_1 = require("pg");
-const bcrypt = __importStar(require("bcryptjs"));
-const tokens_1 = require("../lib/tokens");
+const crypto = __importStar(require("crypto"));
+const bcrypt = __importStar(require("bcrypt"));
 const email_1 = require("../lib/email");
 let PasswordResetService = class PasswordResetService {
     constructor() {
@@ -56,66 +56,136 @@ let PasswordResetService = class PasswordResetService {
     }
     async forgotPassword(email) {
         try {
-            const user = await this.getUserByEmail(email.toLowerCase());
+            const userResult = await this.pool.query('SELECT id, name, email, password FROM users WHERE email = $1', [email]);
+            const user = userResult.rows[0];
             if (!user) {
+                console.log(`⚠️ Password reset requested for non-existent email: ${email}`);
                 return {
-                    message: 'If an account exists with this email, a reset link has been sent.',
+                    message: 'If an account exists with this email, a password reset link has been sent.',
                 };
             }
-            const resetToken = (0, tokens_1.generateResetToken)();
-            const expiresAt = (0, tokens_1.getTokenExpiry)();
-            await this.createPasswordResetToken(user.id, resetToken, expiresAt);
-            await (0, email_1.sendPasswordResetEmail)(user.email, resetToken, user.name);
+            if (!user.password) {
+                console.log(`⚠️ Password reset requested for OAuth-only account: ${email}`);
+                return {
+                    message: 'If an account exists with this email, a password reset link has been sent.',
+                };
+            }
+            const resetToken = this.generateSecureToken();
+            const hashedToken = await this.hashToken(resetToken);
+            const expiresAt = this.getTokenExpiry(parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1'));
+            await this.createResetToken(user.id, hashedToken, expiresAt);
+            await (0, email_1.sendPasswordResetEmail)(email, resetToken, user.name);
+            console.log(`📧 Password reset email sent to ${email}`);
             return {
-                message: 'If an account exists with this email, a reset link has been sent.',
+                message: 'If an account exists with this email, a password reset link has been sent.',
             };
         }
         catch (error) {
-            console.error('Forgot password error:', error);
-            throw new common_1.InternalServerErrorException('An error occurred. Please try again later.');
+            console.error('Error in forgotPassword:', error);
+            throw new common_1.BadRequestException('Failed to process password reset request');
         }
     }
     async resetPassword(token, newPassword) {
         try {
-            const tokenData = await this.validateResetToken(token);
+            this.validatePasswordStrength(newPassword);
+            const hashedToken = await this.hashToken(token);
+            const tokenData = await this.validateResetToken(hashedToken);
             if (!tokenData) {
-                throw new common_1.BadRequestException('Invalid or expired reset token');
+                throw new common_1.UnauthorizedException('Invalid or expired reset token');
             }
-            const hashedPassword = await bcrypt.hash(newPassword, 10);
-            await this.updateUserPassword(tokenData.user_id, hashedPassword);
-            await this.markTokenAsUsed(token);
-            return { message: 'Password has been reset successfully' };
+            const hashedPassword = await bcrypt.hash(newPassword, 12);
+            await this.pool.query(`UPDATE users 
+         SET password = $1, 
+             last_password_change = NOW(),
+             updated_at = NOW() 
+         WHERE id = $2`, [hashedPassword, tokenData.user_id]);
+            await this.markTokenAsUsed(hashedToken);
+            await this.revokeAllUserSessions(tokenData.user_id);
+            console.log(`✅ Password reset successful for user ID: ${tokenData.user_id}`);
+            return {
+                message: 'Password reset successful. You can now log in with your new password.',
+            };
         }
         catch (error) {
-            if (error instanceof common_1.BadRequestException) {
+            if (error instanceof common_1.UnauthorizedException || error instanceof common_1.BadRequestException) {
                 throw error;
             }
-            console.error('Reset password error:', error);
-            throw new common_1.InternalServerErrorException('An error occurred. Please try again later.');
+            console.error('Error in resetPassword:', error);
+            throw new common_1.BadRequestException('Failed to reset password');
         }
     }
-    async createPasswordResetToken(userId, token, expiresAt) {
-        await this.pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [userId]);
-        await this.pool.query('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)', [userId, token, expiresAt]);
+    async hasActiveResetToken(userId) {
+        try {
+            const result = await this.pool.query(`SELECT COUNT(*) as count 
+         FROM password_reset_tokens 
+         WHERE user_id = $1 
+         AND used_at IS NULL 
+         AND expires_at > NOW()`, [userId]);
+            return parseInt(result.rows[0]?.count || '0') > 0;
+        }
+        catch (error) {
+            console.error('Error checking active reset token:', error);
+            return false;
+        }
     }
-    async validateResetToken(token) {
-        const result = await this.pool.query(`SELECT prt.*, u.email, u.id as user_id, u.name 
+    generateSecureToken() {
+        return crypto.randomBytes(32).toString('hex');
+    }
+    async hashToken(token) {
+        return crypto.createHash('sha256').update(token).digest('hex');
+    }
+    getTokenExpiry(hours) {
+        const expiry = new Date();
+        expiry.setHours(expiry.getHours() + hours);
+        return expiry;
+    }
+    async createResetToken(userId, hashedToken, expiresAt) {
+        await this.pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [userId]);
+        await this.pool.query('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)', [userId, hashedToken, expiresAt]);
+    }
+    async validateResetToken(hashedToken) {
+        const result = await this.pool.query(`SELECT prt.*, u.id as user_id, u.email 
        FROM password_reset_tokens prt
        JOIN users u ON u.id = prt.user_id
        WHERE prt.token = $1 
        AND prt.used_at IS NULL 
-       AND prt.expires_at > NOW()`, [token]);
+       AND prt.expires_at > NOW()`, [hashedToken]);
         return result.rows[0] || null;
     }
-    async markTokenAsUsed(token) {
-        await this.pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1', [token]);
+    async markTokenAsUsed(hashedToken) {
+        await this.pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1', [hashedToken]);
     }
-    async getUserByEmail(email) {
-        const result = await this.pool.query('SELECT id, email, name FROM users WHERE email = $1', [email]);
-        return result.rows[0] || null;
+    async revokeAllUserSessions(userId) {
+        try {
+            await this.pool.query(`UPDATE active_sessions 
+         SET is_revoked = TRUE 
+         WHERE user_id = $1 AND is_revoked = FALSE`, [userId]);
+            console.log(`🔒 All sessions revoked for user ID: ${userId} (password reset)`);
+        }
+        catch (error) {
+            console.error('Error revoking sessions:', error);
+        }
     }
-    async updateUserPassword(userId, hashedPassword) {
-        await this.pool.query('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [hashedPassword, userId]);
+    validatePasswordStrength(password) {
+        if (password.length < 8) {
+            throw new common_1.BadRequestException('Password must be at least 8 characters long');
+        }
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+            throw new common_1.BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+        }
+    }
+    async cleanup() {
+        try {
+            await this.pool.query(`DELETE FROM password_reset_tokens 
+         WHERE expires_at < NOW() - INTERVAL '7 days'`);
+            console.log('🧹 Password reset tokens cleanup completed');
+        }
+        catch (error) {
+            console.error('Error cleaning up password reset tokens:', error);
+        }
     }
 };
 exports.PasswordResetService = PasswordResetService;

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -11,6 +10,7 @@ import { authApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignIn';
 
 export function RegisterForm() {
   const [name, setName] = useState('');
@@ -29,53 +29,65 @@ export function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
     }
-
     setIsLoading(true);
-    
+
     try {
       const response = await authApi.register({ name, email, password });
-      
+
       if (!response || !response.user) {
         throw new Error('Invalid registration response');
       }
-      
+
       // Store token and user
       localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
+
       // Update auth context
       setUser(response.user);
-      
-      addNotification(
-        'auth_status',
-        'Account Created!',
-        `Welcome ${response.user.name}! Your account has been successfully created.`,
-        undefined,
-        { action: 'register', email: response.user.email }
-      );
-      
-      router.push('/dashboard');
+
+      // Check if email verification is required
+      if (response.user.isEmailVerified === false) {
+        addNotification(
+          'auth_status',
+          'Account Created!',
+          `Welcome ${response.user.name}! Please verify your email to continue.`,
+          undefined,
+          { action: 'register', email: response.user.email }
+        );
+
+        // Redirect to email verification notice
+        router.push('/verify-email-notice');
+      } else {
+        // If email is already verified (shouldn't happen in normal flow)
+        addNotification(
+          'auth_status',
+          'Account Created!',
+          `Welcome ${response.user.name}! Your account has been successfully created.`,
+          undefined,
+          { action: 'register', email: response.user.email }
+        );
+
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       console.error('Registration error:', error);
       let errorMessage = error.response?.data?.message || error.message || 'Registration failed. Please try again.';
-      
+
       // Handle duplicate email error
       if (error.response?.status === 400 && errorMessage.includes('already exists')) {
         errorMessage = 'An account with this email already exists. Please login or use a different email.';
       }
-      
+
       setError(errorMessage);
-      
+
       addNotification(
         'auth_status',
         'Registration Failed',
@@ -238,6 +250,19 @@ export function RegisterForm() {
               {isLoading ? 'Creating account...' : 'Register'}
             </Button>
           </form>
+
+          {/* Divider and Google Sign-In */}
+          <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                or continue with
+              </span>
+            </div>
+          </div>
+          <GoogleSignInButton />
 
           {/* Login Link */}
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

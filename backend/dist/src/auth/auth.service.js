@@ -50,54 +50,131 @@ const schema_1 = require("../database/schema");
 const drizzle_orm_1 = require("drizzle-orm");
 const bcrypt = __importStar(require("bcrypt"));
 const crypto = __importStar(require("crypto"));
+const pg_1 = require("pg");
+const email_verification_service_1 = require("./email-verification.service");
+const security_log_service_1 = require("./security-log.service");
+const rate_limit_service_1 = require("./rate-limit.service");
+const email_1 = require("../lib/email");
 let AuthService = class AuthService {
-    constructor(jwtService) {
+    constructor(jwtService, emailVerificationService, securityLogService, rateLimitService) {
         this.jwtService = jwtService;
+        this.emailVerificationService = emailVerificationService;
+        this.securityLogService = securityLogService;
+        this.rateLimitService = rateLimitService;
+        this.pool = new pg_1.Pool({
+            connectionString: process.env.DATABASE_URL,
+        });
     }
-    async register(registerDto) {
+    async register(registerDto, ipAddress, userAgent) {
+        await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'register');
         const [existingUser] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, registerDto.email));
         if (existingUser) {
+            await this.securityLogService.log({
+                email: registerDto.email,
+                eventType: 'register_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'Email already registered' },
+            });
             throw new common_1.UnauthorizedException('Email already registered');
         }
-        const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+        this.validatePasswordStrength(registerDto.password);
+        const hashedPassword = await bcrypt.hash(registerDto.password, 12);
         const [user] = await db_1.db.insert(schema_1.users).values({
             email: registerDto.email,
             password: hashedPassword,
             name: registerDto.name,
             authProvider: 'email',
+            emailVerified: false,
         }).returning();
+        await this.emailVerificationService.sendVerificationEmail(user.id, user.email, user.name);
+        await this.securityLogService.log({
+            userId: user.id,
+            email: user.email,
+            eventType: 'register',
+            success: true,
+            ipAddress,
+            userAgent,
+            metadata: { authProvider: 'email', emailVerificationSent: true },
+        });
+        await this.rateLimitService.resetRateLimit(ipAddress || 'unknown', 'register');
         const payload = { sub: user.id, email: user.email };
+        const accessToken = await this.jwtService.signAsync(payload);
+        await this.createSession(user.id, accessToken, ipAddress, userAgent);
         console.log('✅ New user registered:', user.email);
         return {
-            access_token: await this.jwtService.signAsync(payload),
+            access_token: accessToken,
             user: {
                 id: user.id.toString(),
                 email: user.email,
                 name: user.name,
-                authProvider: user.authProvider || 'email'
+                authProvider: user.authProvider || 'email',
+                emailVerified: false,
             },
+            message: 'Registration successful. Please verify your email.',
         };
     }
-    async login(loginDto) {
+    async login(loginDto, ipAddress, userAgent) {
+        await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'login');
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, loginDto.email));
         if (!user) {
+            await this.securityLogService.log({
+                email: loginDto.email,
+                eventType: 'login_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'User not found' },
+            });
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         if (!user.password) {
+            await this.securityLogService.log({
+                userId: user.id,
+                email: user.email,
+                eventType: 'login_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'No password set' },
+            });
             throw new common_1.UnauthorizedException('No password set. Please set a password first or use Google Sign-In.');
         }
-        if (!(await bcrypt.compare(loginDto.password, user.password))) {
+        const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+        if (!isPasswordValid) {
+            await this.securityLogService.log({
+                userId: user.id,
+                email: user.email,
+                eventType: 'login_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'Invalid password' },
+            });
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        await this.securityLogService.log({
+            userId: user.id,
+            email: user.email,
+            eventType: 'login',
+            success: true,
+            ipAddress,
+            userAgent,
+        });
+        await this.rateLimitService.resetRateLimit(ipAddress || 'unknown', 'login');
         const payload = { sub: user.id, email: user.email };
+        const accessToken = await this.jwtService.signAsync(payload);
+        await this.createSession(user.id, accessToken, ipAddress, userAgent);
         console.log('✅ User logged in:', user.email);
         return {
-            access_token: await this.jwtService.signAsync(payload),
+            access_token: accessToken,
             user: {
                 id: user.id.toString(),
                 email: user.email,
                 name: user.name,
-                authProvider: user.authProvider || 'email'
+                authProvider: user.authProvider || 'email',
+                emailVerified: user.emailVerified || false,
             },
         };
     }
@@ -147,17 +224,41 @@ let AuthService = class AuthService {
             email: schema_1.users.email,
             name: schema_1.users.name,
             authProvider: schema_1.users.authProvider,
+            emailVerified: schema_1.users.emailVerified,
             createdAt: schema_1.users.createdAt,
         }).from(schema_1.users);
         return allUsers;
     }
-    async setPassword(userId, newPassword) {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+    async setPassword(userId, newPassword, ipAddress, userAgent) {
+        this.validatePasswordStrength(newPassword);
+        const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        const isVerified = await this.emailVerificationService.isEmailVerified(userId);
+        if (!isVerified) {
+            throw new common_1.UnauthorizedException('Please verify your email before setting a password');
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
         await db_1.db.update(schema_1.users)
-            .set({ password: hashedPassword })
+            .set({
+            password: hashedPassword,
+            lastPasswordChange: new Date(),
+        })
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        await this.securityLogService.log({
+            userId,
+            email: user.email,
+            eventType: 'password_set',
+            success: true,
+            ipAddress,
+            userAgent,
+        });
+        await (0, email_1.sendPasswordChangedEmail)(user.email, user.name);
         console.log('✅ Password set for user ID:', userId);
-        return { message: 'Password set successfully. You can now login with email and password.' };
+        return {
+            message: 'Password set successfully. You can now login with email and password.',
+        };
     }
     async hasPassword(userId) {
         const [user] = await db_1.db.select({ password: schema_1.users.password })
@@ -165,7 +266,15 @@ let AuthService = class AuthService {
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
         return { hasPassword: user && user.password !== null && user.password.length > 0 };
     }
-    async changePassword(userId, oldPassword, newPassword) {
+    async changePassword(userId, currentPassword, newPassword, newPasswordConfirm, ipAddress, userAgent) {
+        await this.rateLimitService.checkRateLimit(`user_${userId}`, 'password_change');
+        if (newPassword !== newPasswordConfirm) {
+            throw new common_1.BadRequestException('New passwords do not match');
+        }
+        if (currentPassword === newPassword) {
+            throw new common_1.BadRequestException('New password must be different from current password');
+        }
+        this.validatePasswordStrength(newPassword);
         const [user] = await db_1.db.select()
             .from(schema_1.users)
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
@@ -175,24 +284,83 @@ let AuthService = class AuthService {
         if (!user.password || user.password.length === 0) {
             throw new common_1.UnauthorizedException('No password set. Use set password instead.');
         }
-        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
+            await this.securityLogService.log({
+                userId,
+                email: user.email,
+                eventType: 'password_change_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'Incorrect current password' },
+            });
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
-        if (oldPassword === newPassword) {
-            throw new common_1.UnauthorizedException('New password must be different from current password');
-        }
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
         await db_1.db.update(schema_1.users)
-            .set({ password: hashedPassword })
+            .set({
+            password: hashedPassword,
+            lastPasswordChange: new Date(),
+        })
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        await this.revokeAllUserSessions(userId);
+        await this.securityLogService.log({
+            userId,
+            email: user.email,
+            eventType: 'password_change',
+            success: true,
+            ipAddress,
+            userAgent,
+        });
+        await this.rateLimitService.resetRateLimit(`user_${userId}`, 'password_change');
+        await (0, email_1.sendPasswordChangedEmail)(user.email, user.name);
         console.log('✅ Password changed for user ID:', userId);
-        return { message: 'Password changed successfully' };
+        return {
+            message: 'Password changed successfully. All other sessions have been logged out.',
+        };
+    }
+    validatePasswordStrength(password) {
+        if (password.length < 8) {
+            throw new common_1.BadRequestException('Password must be at least 8 characters long');
+        }
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+            throw new common_1.BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+        }
+    }
+    async createSession(userId, token, ipAddress, deviceInfo) {
+        try {
+            const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            await this.pool.query(`INSERT INTO active_sessions (user_id, token_hash, device_info, ip_address, expires_at)
+         VALUES ($1, $2, $3, $4, $5)`, [userId, tokenHash, deviceInfo, ipAddress, expiresAt]);
+        }
+        catch (error) {
+            console.error('Error creating session:', error);
+        }
+    }
+    async revokeAllUserSessions(userId) {
+        try {
+            await this.pool.query(`UPDATE active_sessions 
+         SET is_revoked = TRUE 
+         WHERE user_id = $1 AND is_revoked = FALSE`, [userId]);
+            console.log(`🔒 All sessions revoked for user ID: ${userId}`);
+        }
+        catch (error) {
+            console.error('Error revoking sessions:', error);
+        }
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [jwt_1.JwtService])
+    __metadata("design:paramtypes", [jwt_1.JwtService,
+        email_verification_service_1.EmailVerificationService,
+        security_log_service_1.SecurityLogService,
+        rate_limit_service_1.RateLimitService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

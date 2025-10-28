@@ -8,6 +8,10 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     password: (0, pg_core_1.varchar)('password', { length: 255 }),
     name: (0, pg_core_1.varchar)('name', { length: 255 }).notNull(),
     authProvider: (0, pg_core_1.varchar)('auth_provider', { length: 20 }).default('email'),
+    googleId: (0, pg_core_1.varchar)('google_id', { length: 255 }),
+    emailVerified: (0, pg_core_1.boolean)('email_verified').default(false),
+    verificationToken: (0, pg_core_1.varchar)('verification_token', { length: 255 }),
+    lastPasswordChange: (0, pg_core_1.timestamp)('last_password_change'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
 });

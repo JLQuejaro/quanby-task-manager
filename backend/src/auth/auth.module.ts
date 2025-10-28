@@ -7,7 +7,11 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { GoogleAuthGuard } from './google-auth.guard';
+import { GoogleOAuthService } from './google-oauth.service';
+import { EmailVerificationService } from './email-verification.service';
 import { PasswordResetService } from './password-reset.service';
+import { SecurityLogService } from './security-log.service';
+import { RateLimitService } from './rate-limit.service';
 
 @Module({
   imports: [
@@ -24,12 +28,23 @@ import { PasswordResetService } from './password-reset.service';
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
-    JwtStrategy, 
-    GoogleStrategy, 
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
     GoogleAuthGuard,
-    PasswordResetService, // ✅ Add this
+    GoogleOAuthService,
+    EmailVerificationService,
+    PasswordResetService,
+    SecurityLogService,
+    RateLimitService,
   ],
-  exports: [AuthService, GoogleAuthGuard],
+  exports: [
+    AuthService,
+    GoogleAuthGuard,
+    GoogleOAuthService,
+    EmailVerificationService,
+    SecurityLogService,
+    RateLimitService,
+  ],
 })
 export class AuthModule {}

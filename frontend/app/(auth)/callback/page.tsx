@@ -83,6 +83,22 @@ function CallbackContent() {
         }
 
         console.log('✅ User profile fetched:', userData.email);
+        console.log('📧 Email verified status:', userData.isEmailVerified);
+
+        // Check if email is verified
+        if (!userData.isEmailVerified) {
+          console.log('⚠️ Email not verified, redirecting to verification notice');
+          
+          // Store user data even if not verified
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+          
+          setStatus('success');
+          setTimeout(() => {
+            router.push('/verify-email-notice');
+          }, 1000);
+          return;
+        }
 
         // Check if user has password set
         console.log('🔑 Checking password status...');

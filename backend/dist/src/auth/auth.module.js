@@ -16,7 +16,11 @@ const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const google_strategy_1 = require("./google.strategy");
 const google_auth_guard_1 = require("./google-auth.guard");
+const google_oauth_service_1 = require("./google-oauth.service");
+const email_verification_service_1 = require("./email-verification.service");
 const password_reset_service_1 = require("./password-reset.service");
+const security_log_service_1 = require("./security-log.service");
+const rate_limit_service_1 = require("./rate-limit.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -40,9 +44,20 @@ exports.AuthModule = AuthModule = __decorate([
             jwt_strategy_1.JwtStrategy,
             google_strategy_1.GoogleStrategy,
             google_auth_guard_1.GoogleAuthGuard,
+            google_oauth_service_1.GoogleOAuthService,
+            email_verification_service_1.EmailVerificationService,
             password_reset_service_1.PasswordResetService,
+            security_log_service_1.SecurityLogService,
+            rate_limit_service_1.RateLimitService,
         ],
-        exports: [auth_service_1.AuthService, google_auth_guard_1.GoogleAuthGuard],
+        exports: [
+            auth_service_1.AuthService,
+            google_auth_guard_1.GoogleAuthGuard,
+            google_oauth_service_1.GoogleOAuthService,
+            email_verification_service_1.EmailVerificationService,
+            security_log_service_1.SecurityLogService,
+            rate_limit_service_1.RateLimitService,
+        ],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

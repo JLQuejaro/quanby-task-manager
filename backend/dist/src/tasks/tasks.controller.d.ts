@@ -4,11 +4,11 @@ export declare class TasksController {
     private readonly tasksService;
     constructor(tasksService: TasksService);
     create(createTaskDto: CreateTaskDto, req: any): Promise<{
-        description: string;
         id: number;
         createdAt: Date;
         updatedAt: Date;
         title: string;
+        description: string;
         priority: string;
         deadline: Date;
         completed: boolean;
@@ -48,11 +48,11 @@ export declare class TasksController {
         updatedAt: Date;
     }>;
     remove(id: string, req: any): Promise<{
-        description: string;
         id: number;
         createdAt: Date;
         updatedAt: Date;
         title: string;
+        description: string;
         priority: string;
         deadline: Date;
         completed: boolean;

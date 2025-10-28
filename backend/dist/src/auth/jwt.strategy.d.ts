@@ -13,6 +13,10 @@ export declare class JwtStrategy extends JwtStrategy_base {
         email: string;
         name: string;
         authProvider: string;
+        googleId: string;
+        emailVerified: boolean;
+        verificationToken: string;
+        lastPasswordChange: Date;
         createdAt: Date;
         updatedAt: Date;
     }>;

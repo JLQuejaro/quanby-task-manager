@@ -7,9 +7,14 @@ export declare class PasswordResetService {
     resetPassword(token: string, newPassword: string): Promise<{
         message: string;
     }>;
-    private createPasswordResetToken;
+    hasActiveResetToken(userId: number): Promise<boolean>;
+    private generateSecureToken;
+    private hashToken;
+    private getTokenExpiry;
+    private createResetToken;
     private validateResetToken;
     private markTokenAsUsed;
-    private getUserByEmail;
-    private updateUserPassword;
+    private revokeAllUserSessions;
+    private validatePasswordStrength;
+    cleanup(): Promise<void>;
 }

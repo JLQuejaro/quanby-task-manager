@@ -7,6 +7,7 @@ export interface User {
   updatedAt: string;
   hasPassword?: boolean;
   authProvider?: 'email' | 'google';
+  isEmailVerified?: boolean;  // Added for email verification
 }
 
 // Task types

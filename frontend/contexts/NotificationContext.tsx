@@ -1,5 +1,4 @@
 'use client';
-
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Notification, NotificationType } from '@/lib/notification';
 import { DynamicDeadlineNotifier, Task } from '@/lib/dynamic-deadline-notifier';
@@ -38,6 +37,33 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return `notifications_${userEmail}`;
   };
 
+  const getNotificationIcon = (type: NotificationType) => {
+    switch (type) {
+      case 'task_created':
+      case 'task_updated':
+        return <Info className="h-5 w-5" />;
+      case 'task_completed':
+      case 'auth_success':
+      case 'password_changed':
+      case 'verification_resent':
+        return <CheckCircle2 className="h-5 w-5" />;
+      case 'task_deleted':
+      case 'auth_error':
+      case 'password_change_failed':
+      case 'resend_failed':
+        return <Trash2 className="h-5 w-5" />;
+      case 'deadline_reminder':
+      case 'overdue_alert':
+      case 'auth_conflict':
+      case 'verification_required':
+        return <AlertCircle className="h-5 w-5" />;
+      case 'auth_status':
+        return <LogIn className="h-5 w-5" />;
+      default:
+        return <Bell className="h-5 w-5" />;
+    }
+  };
+
   // Initialize the dynamic deadline notifier
   useEffect(() => {
     if (!notifierRef.current) {
@@ -45,7 +71,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         (type, title, message, taskId, displayDuration) => {
           // Add to in-app notifications (only for important deadline reminders)
           addNotification(type, title, message, taskId);
-          
+
           // Show toast with custom duration
           const icon = getNotificationIcon(type);
           if (type === 'overdue_alert') {
@@ -64,7 +90,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setNotifications([]);
       return;
     }
-
     const storageKey = getStorageKey(currentUserEmail);
     if (storageKey) {
       const stored = localStorage.getItem(storageKey);
@@ -88,7 +113,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Save notifications to storage
   useEffect(() => {
     if (!currentUserEmail) return;
-
     const storageKey = getStorageKey(currentUserEmail);
     if (storageKey) {
       if (notifications.length > 0) {
@@ -102,19 +126,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Start monitoring tasks for deadline notifications
   const startDeadlineMonitoring = useCallback((tasks: Task[]) => {
     setMonitoredTasks(tasks);
-    
+
     // Clear existing interval if any
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
     }
-
     // Check tasks every 2 minutes
     monitoringIntervalRef.current = setInterval(() => {
       if (notifierRef.current) {
         notifierRef.current.checkMultipleTasks(tasks);
       }
     }, 120000); // 2 minutes
-
     // Also check immediately
     if (notifierRef.current) {
       notifierRef.current.checkMultipleTasks(tasks);
@@ -149,25 +171,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
   }, [monitoredTasks, currentUserEmail]);
 
-  const getNotificationIcon = (type: NotificationType) => {
-    switch (type) {
-      case 'task_created':
-      case 'task_updated':
-        return <Info className="h-5 w-5" />;
-      case 'task_completed':
-        return <CheckCircle2 className="h-5 w-5" />;
-      case 'task_deleted':
-        return <Trash2 className="h-5 w-5" />;
-      case 'deadline_reminder':
-      case 'overdue_alert':
-        return <AlertCircle className="h-5 w-5" />;
-      case 'auth_status':
-        return <LogIn className="h-5 w-5" />;
-      default:
-        return <Bell className="h-5 w-5" />;
-    }
-  };
-
   const addNotification = useCallback((
     type: NotificationType,
     title: string,
@@ -179,14 +182,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       console.warn('Cannot add notification: No user logged in');
       return;
     }
-
     // Only add to in-app notifications if it's important
     // Skip task_created, task_updated for in-app to reduce clutter
     const shouldAddToInApp = ![
       'task_created',
       'task_updated'
     ].includes(type);
-
     const notification: Notification = {
       id: `${Date.now()}-${Math.random()}`,
       type,
@@ -198,15 +199,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       taskId,
       metadata
     };
-
     // Only add important notifications to the in-app list
     if (shouldAddToInApp) {
       setNotifications(prev => [notification, ...prev]);
     }
-
     // Show toast notification with icon
     const icon = getNotificationIcon(type);
-    
+
     if (type === 'task_created' || type === 'task_completed') {
       toast.success(message, { icon, duration: 3000 });
     } else if (type === 'task_deleted') {
@@ -238,7 +237,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const clearAll = useCallback(() => {
     if (!currentUserEmail) return;
-    
+
     setNotifications([]);
     const storageKey = getStorageKey(currentUserEmail);
     if (storageKey) {

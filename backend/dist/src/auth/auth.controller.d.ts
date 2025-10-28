@@ -1,59 +1,82 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto } from './dto/register.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleOAuthService } from './google-oauth.service';
+import { EmailVerificationService } from './email-verification.service';
 import { PasswordResetService } from './password-reset.service';
+import { RateLimitService } from './rate-limit.service';
+import { RegisterDto, LoginDto, ChangePasswordDto, SetPasswordDto, GoogleOAuthCallbackDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto';
 export declare class AuthController {
     private authService;
+    private googleOAuthService;
+    private emailVerificationService;
     private passwordResetService;
-    constructor(authService: AuthService, passwordResetService: PasswordResetService);
-    register(registerDto: RegisterDto): Promise<{
+    private rateLimitService;
+    constructor(authService: AuthService, googleOAuthService: GoogleOAuthService, emailVerificationService: EmailVerificationService, passwordResetService: PasswordResetService, rateLimitService: RateLimitService);
+    register(registerDto: RegisterDto, ip: string, userAgent: string): Promise<{
         access_token: string;
         user: {
             id: string;
             email: string;
             name: string;
             authProvider: string;
+            emailVerified: boolean;
+        };
+        message: string;
+    }>;
+    login(loginDto: LoginDto, ip: string, userAgent: string): Promise<{
+        access_token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            authProvider: string;
+            emailVerified: boolean;
         };
     }>;
-    login(loginDto: LoginDto): Promise<{
+    googleCallback(callbackDto: GoogleOAuthCallbackDto, ip: string, userAgent: string): Promise<import("./google-oauth.service").GoogleAuthResult | {
         access_token: string;
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            authProvider: string;
-        };
+        status: "created" | "existing" | "pending_verification" | "conflict";
+        user?: any;
+        message?: string;
+        requiresAction?: string;
     }>;
     googleAuth(req: Request): Promise<void>;
     googleAuthRedirect(req: Request, res: Response): Promise<void>;
+    verifyEmail(verifyEmailDto: VerifyEmailDto, ip: string): Promise<{
+        success: boolean;
+        email: string;
+        access_token: string;
+        user: any;
+    }>;
+    resendVerification(req: Request): Promise<{
+        message: string;
+    }>;
+    verificationStatus(req: Request): Promise<{
+        emailVerified: boolean;
+        hasPendingVerification: boolean;
+    }>;
+    setPassword(req: Request, setPasswordDto: SetPasswordDto, ip: string, userAgent: string): Promise<{
+        message: string;
+    }>;
+    changePassword(req: Request, changePasswordDto: ChangePasswordDto, ip: string, userAgent: string): Promise<{
+        message: string;
+    }>;
+    hasPassword(req: Request): Promise<{
+        hasPassword: boolean;
+    }>;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto, ip: string): Promise<{
+        message: string;
+    }>;
+    resetPassword(resetPasswordDto: ResetPasswordDto, ip: string): Promise<{
+        message: string;
+    }>;
     getProfile(req: Request): Promise<any>;
     getAllUsers(): Promise<{
         id: number;
         email: string;
         name: string;
         authProvider: string;
+        emailVerified: boolean;
         createdAt: Date;
     }[]>;
-    hasPassword(req: Request): Promise<{
-        hasPassword: boolean;
-    }>;
-    setPassword(req: Request, body: {
-        password: string;
-    }): Promise<{
-        message: string;
-    }>;
-    changePassword(req: Request, body: {
-        oldPassword: string;
-        newPassword: string;
-    }): Promise<{
-        message: string;
-    }>;
-    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
-        message: string;
-    }>;
-    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
-        message: string;
-    }>;
 }
