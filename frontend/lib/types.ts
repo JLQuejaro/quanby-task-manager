@@ -7,7 +7,7 @@ export interface User {
   updatedAt: string;
   hasPassword?: boolean;
   authProvider?: 'email' | 'google';
-  isEmailVerified?: boolean;  // Added for email verification
+  emailVerified?: boolean;  // ✅ FIXED: Changed from isEmailVerified to match backend
 }
 
 // Task types

@@ -19,6 +19,8 @@ export class EmailVerificationService {
    */
   async sendVerificationEmail(userId: number, email: string, name?: string): Promise<void> {
     try {
+      console.log(`📧 Preparing to send verification email to ${email} (User ID: ${userId})`);
+
       // Generate secure verification token (plain text for email)
       const verificationToken = this.generateSecureToken();
       const expiresAt = this.getTokenExpiry(24); // 24 hours
@@ -32,10 +34,11 @@ export class EmailVerificationService {
       // Send plain token to email (user clicks link with this)
       await sendEmailVerificationEmail(email, verificationToken, name);
 
-      console.log(`📧 Verification email sent to ${email}`);
+      console.log(`✅ Verification email sent to ${email}`);
     } catch (error) {
-      console.error('Error sending verification email:', error);
-      throw new BadRequestException('Failed to send verification email');
+      console.error('❌ Error sending verification email:', error);
+      console.error('❌ Error details:', error.message);
+      throw new BadRequestException('Failed to send verification email: ' + error.message);
     }
   }
 
@@ -44,40 +47,62 @@ export class EmailVerificationService {
    */
   async resendVerificationEmail(userId: number): Promise<void> {
     try {
+      console.log(`🔄 Resending verification email for user ID: ${userId}`);
+
+      // Query with snake_case only
       const userResult = await this.pool.query(
-        'SELECT email, name, email_verified FROM users WHERE id = $1',
+        `SELECT 
+          id,
+          email, 
+          name, 
+          email_verified as is_verified
+         FROM users 
+         WHERE id = $1`,
         [userId]
       );
 
-      const user = userResult.rows[0];
-      if (!user) {
+      if (userResult.rows.length === 0) {
+        console.error(`❌ User not found: ${userId}`);
         throw new BadRequestException('User not found');
       }
 
-      if (user.email_verified) {
+      const user = userResult.rows[0];
+      console.log(`👤 Found user: ${user.email}`);
+
+      if (user.is_verified) {
+        console.log(`✅ Email already verified for: ${user.email}`);
         throw new BadRequestException('Email already verified');
       }
 
       // Check for recent verification email (prevent spam)
       const recentTokenResult = await this.pool.query(
-        `SELECT created_at FROM email_verification_tokens 
+        `SELECT created_at
+         FROM email_verification_tokens 
          WHERE user_id = $1 
          AND created_at > NOW() - INTERVAL '2 minutes'
-         ORDER BY created_at DESC LIMIT 1`,
+         ORDER BY created_at DESC 
+         LIMIT 1`,
         [userId]
       );
 
       if (recentTokenResult.rows.length > 0) {
-        throw new BadRequestException('Please wait before requesting another verification email');
+        console.log(`⏱️ Recent verification email already sent to: ${user.email}`);
+        throw new BadRequestException('Please wait 2 minutes before requesting another verification email');
       }
 
+      console.log(`📤 Sending new verification email to: ${user.email}`);
       await this.sendVerificationEmail(userId, user.email, user.name);
+      
+      console.log(`✅ Verification email resent successfully to: ${user.email}`);
     } catch (error) {
+      console.error('❌ Error in resendVerificationEmail:', error);
+      console.error('❌ Error stack:', error.stack);
+      
       if (error instanceof BadRequestException) {
         throw error;
       }
-      console.error('Error resending verification email:', error);
-      throw new BadRequestException('Failed to resend verification email');
+      
+      throw new BadRequestException('Failed to resend verification email: ' + error.message);
     }
   }
 
@@ -92,6 +117,11 @@ export class EmailVerificationService {
   }> {
     try {
       console.log('🔍 EmailVerificationService: Verifying token:', token.substring(0, 20) + '...');
+
+      if (!token || token.length < 32) {
+        console.error('❌ Invalid token format');
+        throw new BadRequestException('Invalid verification token format');
+      }
 
       // Hash the incoming token to match database
       const hashedToken = await this.hashToken(token);
@@ -137,11 +167,14 @@ export class EmailVerificationService {
         },
       };
     } catch (error) {
+      console.error('❌ Email verification error:', error);
+      console.error('❌ Error stack:', error.stack);
+      
       if (error instanceof BadRequestException) {
         throw error;
       }
-      console.error('❌ Email verification error:', error);
-      throw new BadRequestException('Failed to verify email');
+      
+      throw new BadRequestException('Failed to verify email: ' + error.message);
     }
   }
 
@@ -173,11 +206,13 @@ export class EmailVerificationService {
         email: tokenData.email,
       };
     } catch (error) {
+      console.error('❌ Email verification error:', error);
+      
       if (error instanceof BadRequestException) {
         throw error;
       }
-      console.error('Email verification error:', error);
-      throw new BadRequestException('Failed to verify email');
+      
+      throw new BadRequestException('Failed to verify email: ' + error.message);
     }
   }
 
@@ -193,7 +228,7 @@ export class EmailVerificationService {
 
       return result.rows[0]?.email_verified || false;
     } catch (error) {
-      console.error('Error checking email verification:', error);
+      console.error('❌ Error checking email verification:', error);
       return false;
     }
   }
@@ -214,7 +249,7 @@ export class EmailVerificationService {
 
       return parseInt(result.rows[0]?.count || '0') > 0;
     } catch (error) {
-      console.error('Error checking pending verification:', error);
+      console.error('❌ Error checking pending verification:', error);
       return false;
     }
   }
@@ -252,69 +287,171 @@ export class EmailVerificationService {
     hashedToken: string,
     expiresAt: Date,
   ): Promise<void> {
-    // Invalidate existing tokens for this user
-    await this.pool.query(
-      'UPDATE email_verification_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL',
-      [userId]
-    );
+    try {
+      console.log(`💾 Creating verification token for user ID: ${userId}`);
 
-    // Create new verification token (store hashed version)
-    await this.pool.query(
-      'INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [userId, hashedToken, expiresAt]
-    );
+      // Invalidate existing tokens for this user
+      const invalidateResult = await this.pool.query(
+        'UPDATE email_verification_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL',
+        [userId]
+      );
+      
+      console.log(`🔄 Invalidated ${invalidateResult.rowCount} old tokens`);
+
+      // Create new verification token (store hashed version)
+      const insertResult = await this.pool.query(
+        'INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3) RETURNING id',
+        [userId, hashedToken, expiresAt]
+      );
+
+      console.log(`✅ Created new verification token with ID: ${insertResult.rows[0].id}`);
+    } catch (error) {
+      console.error('❌ Error creating verification token:', error);
+      console.error('❌ Error details:', error.message);
+      throw new BadRequestException('Failed to create verification token: ' + error.message);
+    }
   }
 
   /**
    * Validate verification token
    */
   private async validateVerificationToken(hashedToken: string): Promise<any> {
-    const result = await this.pool.query(
-      `SELECT evt.*, u.email, u.id as user_id, u.name, u.auth_provider
-       FROM email_verification_tokens evt
-       JOIN users u ON u.id = evt.user_id
-       WHERE evt.token = $1 
-       AND evt.used_at IS NULL 
-       AND evt.expires_at > NOW()`,
-      [hashedToken]
-    );
+    try {
+      console.log('🔍 Validating token in database...');
 
-    return result.rows[0] || null;
+      const result = await this.pool.query(
+        `SELECT 
+          evt.*, 
+          u.email, 
+          u.id as user_id, 
+          u.name, 
+          u.auth_provider
+         FROM email_verification_tokens evt
+         JOIN users u ON u.id = evt.user_id
+         WHERE evt.token = $1 
+         AND evt.used_at IS NULL 
+         AND evt.expires_at > NOW()`,
+        [hashedToken]
+      );
+
+      if (result.rows.length === 0) {
+        console.log('❌ No matching token found in database');
+        
+        // Check if token exists but is expired or used
+        const expiredCheck = await this.pool.query(
+          `SELECT 
+            evt.expires_at, 
+            evt.used_at,
+            u.email
+           FROM email_verification_tokens evt
+           JOIN users u ON u.id = evt.user_id
+           WHERE evt.token = $1`,
+          [hashedToken]
+        );
+
+        if (expiredCheck.rows.length > 0) {
+          const tokenInfo = expiredCheck.rows[0];
+          if (tokenInfo.used_at) {
+            console.log('❌ Token already used');
+          } else if (new Date(tokenInfo.expires_at) < new Date()) {
+            console.log('❌ Token expired at:', tokenInfo.expires_at);
+          }
+        } else {
+          console.log('❌ Token does not exist in database at all');
+        }
+        
+        return null;
+      }
+
+      console.log('✅ Token found in database for user:', result.rows[0].email);
+      return result.rows[0];
+    } catch (error) {
+      console.error('❌ Error validating token:', error);
+      console.error('❌ Error details:', error.message);
+      throw error;
+    }
   }
 
   /**
    * Mark email as verified in users table
    */
   private async markEmailAsVerified(userId: number): Promise<void> {
-    await this.pool.query(
-      'UPDATE users SET email_verified = TRUE, updated_at = NOW() WHERE id = $1',
-      [userId]
-    );
+    try {
+      console.log(`📝 Marking email as verified for user ID: ${userId}`);
+
+      const result = await this.pool.query(
+        `UPDATE users 
+         SET email_verified = TRUE,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, email`,
+        [userId]
+      );
+
+      if (result.rowCount === 0) {
+        throw new BadRequestException('User not found');
+      }
+
+      console.log(`✅ Email verified for user: ${result.rows[0].email}`);
+    } catch (error) {
+      console.error('❌ Error marking email as verified:', error);
+      console.error('❌ Error details:', error.message);
+      throw error;
+    }
   }
 
   /**
    * Mark token as used
    */
   private async markTokenAsUsed(hashedToken: string): Promise<void> {
-    await this.pool.query(
-      'UPDATE email_verification_tokens SET used_at = NOW() WHERE token = $1',
-      [hashedToken]
-    );
+    try {
+      console.log('🔒 Marking token as used...');
+
+      const result = await this.pool.query(
+        'UPDATE email_verification_tokens SET used_at = NOW() WHERE token = $1 RETURNING id',
+        [hashedToken]
+      );
+
+      if (result.rowCount > 0) {
+        console.log(`✅ Token marked as used (ID: ${result.rows[0].id})`);
+      } else {
+        console.log('⚠️ Token not found when marking as used');
+      }
+    } catch (error) {
+      console.error('❌ Error marking token as used:', error);
+      throw error;
+    }
   }
 
   /**
    * Get user data by ID
    */
   private async getUserData(userId: number): Promise<any> {
-    const result = await this.pool.query(
-      'SELECT id, email, name, email_verified, auth_provider FROM users WHERE id = $1',
-      [userId]
-    );
+    try {
+      console.log(`👤 Fetching user data for ID: ${userId}`);
 
-    if (result.rows.length === 0) {
-      throw new BadRequestException('User not found');
+      const result = await this.pool.query(
+        `SELECT 
+          id, 
+          email, 
+          name, 
+          email_verified,
+          auth_provider
+         FROM users 
+         WHERE id = $1`,
+        [userId]
+      );
+
+      if (result.rows.length === 0) {
+        console.error('❌ User not found:', userId);
+        throw new BadRequestException('User not found');
+      }
+
+      console.log('✅ User data fetched:', result.rows[0].email);
+      return result.rows[0];
+    } catch (error) {
+      console.error('❌ Error fetching user data:', error);
+      throw error;
     }
-
-    return result.rows[0];
   }
 }

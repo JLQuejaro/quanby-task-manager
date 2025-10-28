@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const router = (0, express_1.Router)();
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
+const db_1 = require("../database/db");
+const schema_1 = require("../database/schema");
 const drizzle_orm_1 = require("drizzle-orm");
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 router.post('/verify-email', async (req, res) => {

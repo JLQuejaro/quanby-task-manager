@@ -50,6 +50,16 @@ export default function AnalyticsPage() {
       ? (highPriorityCompleted / highPriorityTasks.length) * 100 
       : 0;
 
+    const mediumPriorityCompleted = mediumPriorityTasks.filter(t => t.completed).length;
+    const mediumPriorityRate = mediumPriorityTasks.length > 0 
+      ? (mediumPriorityCompleted / mediumPriorityTasks.length) * 100 
+      : 0;
+
+    const lowPriorityCompleted = lowPriorityTasks.filter(t => t.completed).length;
+    const lowPriorityRate = lowPriorityTasks.length > 0 
+      ? (lowPriorityCompleted / lowPriorityTasks.length) * 100 
+      : 0;
+
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
     const weeklyCompleted = tasks.filter(t => 
       t.deadline && isThisWeek(parseISO(t.deadline)) && t.completed
@@ -69,6 +79,8 @@ export default function AnalyticsPage() {
       completionRate,
       weeklyProductivity,
       highPriorityRate,
+      mediumPriorityRate,
+      lowPriorityRate,
       priorityStats: {
         high: highPriorityTasks.length,
         medium: mediumPriorityTasks.length,
@@ -226,7 +238,12 @@ export default function AnalyticsPage() {
                   <div className="w-3 h-3 bg-yellow-500 rounded-full" />
                   <span className="text-sm dark:text-gray-300">Medium Priority</span>
                 </div>
-                <span className="text-sm font-medium dark:text-gray-200">{analytics.priorityStats.medium}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium dark:text-gray-200">{analytics.priorityStats.medium}</span>
+                  <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 rounded-full">
+                    {analytics.mediumPriorityRate.toFixed(1)}% done
+                  </Badge>
+                </div>
               </div>
               
               <div className="flex items-center justify-between">
@@ -234,7 +251,12 @@ export default function AnalyticsPage() {
                   <div className="w-3 h-3 bg-green-500 rounded-full" />
                   <span className="text-sm dark:text-gray-300">Low Priority</span>
                 </div>
-                <span className="text-sm font-medium dark:text-gray-200">{analytics.priorityStats.low}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium dark:text-gray-200">{analytics.priorityStats.low}</span>
+                  <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 rounded-full">
+                    {analytics.lowPriorityRate.toFixed(1)}% done
+                  </Badge>
+                </div>
               </div>
 
               {analytics.priorityStats.high > 0 && (

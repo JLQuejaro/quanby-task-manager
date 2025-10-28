@@ -67,9 +67,33 @@ let AuthController = class AuthController {
             return res.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
         }
     }
+    async verifyEmailGet(token, ip) {
+        try {
+            console.log('📬 GET Verify email request received');
+            if (!token) {
+                console.error('❌ No token provided in query parameter');
+                throw new common_1.BadRequestException('Verification token is required');
+            }
+            console.log('🔍 Token (first 20 chars):', token.substring(0, 20) + '...');
+            await this.rateLimitService.checkRateLimit(ip, 'email_verification');
+            const result = await this.emailVerificationService.verifyEmailAndGenerateToken(token);
+            await this.rateLimitService.resetRateLimit(ip, 'email_verification');
+            console.log('✅ Verification successful for:', result.email);
+            return result;
+        }
+        catch (error) {
+            console.error('❌ GET Verification endpoint error:', error);
+            throw error;
+        }
+    }
     async verifyEmail(verifyEmailDto, ip) {
         try {
-            console.log('📬 Verify email request received');
+            console.log('📬 POST Verify email request received');
+            console.log('📦 Request body:', verifyEmailDto);
+            if (!verifyEmailDto || !verifyEmailDto.token) {
+                console.error('❌ No token provided in request body');
+                throw new common_1.BadRequestException('Verification token is required in request body');
+            }
             console.log('🔍 Token (first 20 chars):', verifyEmailDto.token.substring(0, 20) + '...');
             await this.rateLimitService.checkRateLimit(ip, 'email_verification');
             const result = await this.emailVerificationService.verifyEmailAndGenerateToken(verifyEmailDto.token);
@@ -78,7 +102,7 @@ let AuthController = class AuthController {
             return result;
         }
         catch (error) {
-            console.error('❌ Verification endpoint error:', error);
+            console.error('❌ POST Verification endpoint error:', error);
             throw error;
         }
     }
@@ -191,9 +215,19 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "googleAuthRedirect", null);
 __decorate([
+    (0, common_1.Get)('verify-email'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify email with token from URL query parameter' }),
+    __param(0, (0, common_1.Query)('token')),
+    __param(1, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyEmailGet", null);
+__decorate([
     (0, common_1.Post)('verify-email'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Verify email with token and auto-login' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify email with token in request body (POST version)' }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Ip)()),
     __metadata("design:type", Function),

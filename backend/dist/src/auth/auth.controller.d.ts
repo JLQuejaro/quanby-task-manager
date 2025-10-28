@@ -42,6 +42,12 @@ export declare class AuthController {
     }>;
     googleAuth(req: Request): Promise<void>;
     googleAuthRedirect(req: Request, res: Response): Promise<void>;
+    verifyEmailGet(token: string, ip: string): Promise<{
+        success: boolean;
+        email: string;
+        access_token: string;
+        user: any;
+    }>;
     verifyEmail(verifyEmailDto: VerifyEmailDto, ip: string): Promise<{
         success: boolean;
         email: string;

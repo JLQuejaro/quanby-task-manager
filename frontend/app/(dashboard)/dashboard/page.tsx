@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsDialog } from '@/components/shared/KeyboardShortcutsDialog';
 import { Header } from '@/components/layout/Header';
@@ -12,13 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useTasks } from '@/hooks/useTasks';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Task } from '@/lib/types';
 import { Plus, CheckCircle2, Clock, AlertCircle, Search } from 'lucide-react';
 import { filterTasks } from '@/lib/utils';
-import { isToday, isTomorrow, isPast, parseISO } from 'date-fns';
+import { isToday, isTomorrow, isPast, parseISO, startOfDay } from 'date-fns';
 import { Input } from '@/components/ui/input';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const { tasks, isLoading, createTask, updateTask, deleteTask, toggleComplete } = useTasks();
   const { toggleTheme } = useTheme();
   const [activeFilter, setActiveFilter] = useState('all');
@@ -26,6 +30,14 @@ export default function DashboardPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+
+  // CRITICAL FIX: Check email verification before rendering dashboard
+  useEffect(() => {
+    if (!isLoading && user && !user.emailVerified) {
+      console.log('⚠️ Email not verified, redirecting from dashboard');
+      router.push('/verify-email-notice');
+    }
+  }, [user, isLoading, router]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -55,21 +67,26 @@ export default function DashboardPage() {
     },
     {
       key: '2',
-      callback: () => setActiveFilter('today'),
+      callback: () => setActiveFilter('overdue'),
       preventDefault: true,
     },
     {
       key: '3',
-      callback: () => setActiveFilter('tomorrow'),
+      callback: () => setActiveFilter('today'),
       preventDefault: true,
     },
     {
       key: '4',
-      callback: () => setActiveFilter('upcoming'),
+      callback: () => setActiveFilter('tomorrow'),
       preventDefault: true,
     },
     {
       key: '5',
+      callback: () => setActiveFilter('upcoming'),
+      preventDefault: true,
+    },
+    {
+      key: '6',
       callback: () => setActiveFilter('completed'),
       preventDefault: true,
     },
@@ -89,6 +106,12 @@ export default function DashboardPage() {
   // Calculate task counts
   const taskCounts = {
     all: tasks.length,
+    overdue: tasks.filter(t => 
+      t.deadline && 
+      isPast(startOfDay(parseISO(t.deadline))) && 
+      !isToday(parseISO(t.deadline)) && 
+      !t.completed
+    ).length,
     today: tasks.filter(t => t.deadline && isToday(parseISO(t.deadline)) && !t.completed).length,
     tomorrow: tasks.filter(t => t.deadline && isTomorrow(parseISO(t.deadline)) && !t.completed).length,
     upcoming: tasks.filter(t => !t.completed).length,
@@ -100,7 +123,7 @@ export default function DashboardPage() {
     total: tasks.length,
     completed: tasks.filter(t => t.completed).length,
     pending: tasks.filter(t => !t.completed).length,
-    overdue: tasks.filter(t => t.deadline && isPast(parseISO(t.deadline)) && !t.completed).length,
+    overdue: taskCounts.overdue,
     inProgress: tasks.filter(t => !t.completed && t.deadline && !isPast(parseISO(t.deadline))).length,
   };
 
@@ -164,12 +187,15 @@ export default function DashboardPage() {
     setEditingTask(null);
   };
 
-  if (isLoading) {
+  // Show loading if data is loading OR if we're redirecting unverified users
+  if (isLoading || (user && !user.emailVerified)) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading tasks...</p>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            {user && !user.emailVerified ? 'Redirecting...' : 'Loading tasks...'}
+          </p>
         </div>
       </div>
     );
@@ -214,11 +240,11 @@ export default function DashboardPage() {
 
           <Card className="rounded-2xl bg-white dark:bg-gray-900 border dark:border-gray-800">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium dark:text-gray-300">Pending</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <CardTitle className="text-sm font-medium dark:text-gray-300">Overdue</CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+              <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
             </CardContent>
           </Card>
         </div>
@@ -242,7 +268,7 @@ export default function DashboardPage() {
                   style={{ width: `${completionRate}%` }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-3 gap-4 pt-2">
                 <div className="text-center">
                   <div className="text-lg font-semibold text-blue-600">{stats.inProgress}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">In Progress</div>
@@ -250,6 +276,10 @@ export default function DashboardPage() {
                 <div className="text-center">
                   <div className="text-lg font-semibold text-orange-600">{stats.pending}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">Pending</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-red-600">{stats.overdue}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Overdue</div>
                 </div>
               </div>
             </CardContent>

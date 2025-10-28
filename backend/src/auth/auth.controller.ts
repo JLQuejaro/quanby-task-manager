@@ -12,6 +12,7 @@ import {
   Ip,
   Headers,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -124,15 +125,54 @@ export class AuthController {
 
   // ===== EMAIL VERIFICATION ENDPOINTS =====
 
+  @Get('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email with token from URL query parameter' })
+  async verifyEmailGet(
+    @Query('token') token: string,
+    @Ip() ip: string,
+  ) {
+    try {
+      console.log('📬 GET Verify email request received');
+      
+      if (!token) {
+        console.error('❌ No token provided in query parameter');
+        throw new BadRequestException('Verification token is required');
+      }
+
+      console.log('🔍 Token (first 20 chars):', token.substring(0, 20) + '...');
+
+      await this.rateLimitService.checkRateLimit(ip, 'email_verification');
+
+      const result = await this.emailVerificationService.verifyEmailAndGenerateToken(token);
+
+      await this.rateLimitService.resetRateLimit(ip, 'email_verification');
+
+      console.log('✅ Verification successful for:', result.email);
+
+      return result;
+    } catch (error) {
+      console.error('❌ GET Verification endpoint error:', error);
+      throw error;
+    }
+  }
+
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify email with token and auto-login' })
+  @ApiOperation({ summary: 'Verify email with token in request body (POST version)' })
   async verifyEmail(
     @Body() verifyEmailDto: VerifyEmailDto,
     @Ip() ip: string,
   ) {
     try {
-      console.log('📬 Verify email request received');
+      console.log('📬 POST Verify email request received');
+      console.log('📦 Request body:', verifyEmailDto);
+
+      if (!verifyEmailDto || !verifyEmailDto.token) {
+        console.error('❌ No token provided in request body');
+        throw new BadRequestException('Verification token is required in request body');
+      }
+
       console.log('🔍 Token (first 20 chars):', verifyEmailDto.token.substring(0, 20) + '...');
 
       await this.rateLimitService.checkRateLimit(ip, 'email_verification');
@@ -147,7 +187,7 @@ export class AuthController {
 
       return result;
     } catch (error) {
-      console.error('❌ Verification endpoint error:', error);
+      console.error('❌ POST Verification endpoint error:', error);
       throw error;
     }
   }

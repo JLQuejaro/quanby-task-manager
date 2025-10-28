@@ -69,7 +69,8 @@ async function bootstrap() {
     console.log(`🔐 Google OAuth: http://localhost:${port}/api/auth/google`);
     console.log(`📍 OAuth Callback: http://localhost:${port}/api/auth/callback/google`);
     console.log(`📝 Register: http://localhost:${port}/api/auth/register`);
-    console.log(`🔑 Login: http://localhost:${port}/api/auth/login\n`);
+    console.log(`🔑 Login: http://localhost:${port}/api/auth/login`);
+    console.log(`✉️  Verify Email: http://localhost:${port}/api/auth/verify-email\n`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

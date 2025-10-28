@@ -11,15 +11,35 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setUser } = useAuth();
+  const { user, setUser } = useAuth();
   const { addNotification } = useNotifications();
-  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error' | 'already_verified'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     const verifyEmail = async () => {
       try {
+        // CRITICAL FIX: Check if user is already logged in and verified
+        if (user?.emailVerified) {
+          console.log('✅ User already verified, redirecting to dashboard');
+          setStatus('already_verified');
+          setUserEmail(user.email);
+          
+          addNotification(
+            'auth_status',
+            'Already Verified',
+            'Your email is already verified. Redirecting to dashboard...',
+            undefined,
+            { action: 'already_verified', email: user.email }
+          );
+          
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 2000);
+          return;
+        }
+
         const token = searchParams.get('token');
 
         if (!token) {
@@ -36,14 +56,13 @@ function VerifyEmailContent() {
         }
 
         console.log('🔍 Verifying email with token:', token.substring(0, 20) + '...');
-        console.log('🌐 API URL:', `${API_URL}/api/auth/verify-email`);
+        console.log('🌐 API URL:', `${API_URL}/api/auth/verify-email?token=${token.substring(0, 20)}...`);
 
-        const response = await fetch(`${API_URL}/api/auth/verify-email`, {
-          method: 'POST',
+        const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ token }),
         });
 
         console.log('📡 Response status:', response.status);
@@ -61,6 +80,14 @@ function VerifyEmailContent() {
         if (!response.ok) {
           console.error('❌ Verification failed:', data);
           const errorMsg = data.message || data.error || `Verification failed (Status: ${response.status})`;
+          
+          // Special handling for "already used" tokens
+          if (errorMsg.includes('already used') || errorMsg.includes('Invalid or expired')) {
+            setErrorMessage('This verification link has already been used or has expired. Please login to request a new one.');
+          } else {
+            setErrorMessage(errorMsg);
+          }
+          
           throw new Error(errorMsg);
         }
 
@@ -112,7 +139,9 @@ function VerifyEmailContent() {
         }
 
         setStatus('error');
-        setErrorMessage(errorMsg);
+        if (!errorMessage) {
+          setErrorMessage(errorMsg);
+        }
 
         // Show error notification
         addNotification(
@@ -126,7 +155,7 @@ function VerifyEmailContent() {
     };
 
     verifyEmail();
-  }, [searchParams, router, setUser, addNotification]);
+  }, [searchParams, router, setUser, addNotification, user, errorMessage]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
@@ -160,6 +189,36 @@ function VerifyEmailContent() {
                   <p className="text-gray-600 dark:text-gray-400">
                     Please wait while we verify your email address...
                   </p>
+                </div>
+              </>
+            )}
+
+            {/* Already Verified State */}
+            {status === 'already_verified' && (
+              <>
+                <div className="flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                    <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    Already Verified! ✅
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">
+                    Your email is already verified.
+                  </p>
+                  {userEmail && (
+                    <p className="text-sm font-medium text-[#4169E1] mb-4">
+                      {userEmail}
+                    </p>
+                  )}
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                    <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                      Redirecting to dashboard...
+                    </span>
+                  </div>
                 </div>
               </>
             )}
@@ -216,14 +275,8 @@ function VerifyEmailContent() {
                     >
                       Go to Login
                     </button>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="w-full h-11 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition"
-                    >
-                      Try Again
-                    </button>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      You can request a new verification email after logging in.
+                      Login and request a new verification email from your account settings.
                     </p>
                   </div>
                 </div>
@@ -233,7 +286,7 @@ function VerifyEmailContent() {
         </div>
 
         {/* Help Text */}
-        {status === 'success' && (
+        {(status === 'success' || status === 'already_verified') && (
           <p className="text-center text-xs text-gray-500 dark:text-gray-500">
             You will be automatically redirected in a few seconds.
           </p>

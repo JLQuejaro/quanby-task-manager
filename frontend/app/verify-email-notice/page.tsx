@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CheckSquare, Mail } from 'lucide-react';
+import { CheckSquare, Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
@@ -14,20 +14,28 @@ export default function VerifyEmailNoticePage() {
   const { theme, toggleTheme } = useTheme();
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    // If user is already verified, redirect to dashboard
-    if (user?.isEmailVerified) {
+    // FIXED: Changed isEmailVerified to emailVerified
+    if (user?.emailVerified) {
+      console.log('✅ Email already verified, redirecting to dashboard');
       router.push('/dashboard');
     }
 
     // If no user is logged in, redirect to login
     if (!user) {
+      console.log('⚠️ No user found, redirecting to login');
       router.push('/login');
     }
   }, [user, router]);
 
   const handleResendVerification = async () => {
+    if (cooldown > 0 || isResending) {
+      console.log('⏱️ Cooldown active or already sending');
+      return;
+    }
+
     setIsResending(true);
     setResendMessage('');
 
@@ -37,8 +45,11 @@ export default function VerifyEmailNoticePage() {
 
       if (!token) {
         setResendMessage('❌ Please login to resend verification email.');
+        setIsResending(false);
         return;
       }
+
+      console.log('📤 Resending verification email...');
 
       const response = await fetch(`${apiUrl}/api/auth/resend-verification`, {
         method: 'POST',
@@ -49,28 +60,53 @@ export default function VerifyEmailNoticePage() {
       });
 
       if (response.ok) {
+        console.log('✅ Verification email sent successfully');
         setResendMessage('✅ Verification email sent! Check your inbox.');
+        
+        // Start 2-minute cooldown
+        setCooldown(120);
+        const interval = setInterval(() => {
+          setCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
       } else {
         const data = await response.json();
+        console.error('❌ Failed to resend:', data.message);
         setResendMessage(`❌ ${data.message || 'Failed to resend email.'}`);
       }
     } catch (error) {
+      console.error('❌ Resend verification error:', error);
       setResendMessage('❌ Failed to resend verification email.');
-      console.error('Resend verification error:', error);
     } finally {
       setIsResending(false);
     }
   };
 
   const handleLogout = () => {
+    console.log('👋 Logging out user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
   };
 
-  // Don't render if no user
+  const formatCooldown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Don't render if no user (waiting for redirect)
   if (!user) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (
@@ -141,13 +177,22 @@ export default function VerifyEmailNoticePage() {
               </div>
             )}
 
-            {/* Resend Button */}
+            {/* Resend Button with Cooldown */}
             <Button
               onClick={handleResendVerification}
-              disabled={isResending}
-              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium rounded-xl"
+              disabled={isResending || cooldown > 0}
+              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition flex items-center justify-center gap-2"
             >
-              {isResending ? 'Sending...' : 'Resend Verification Email'}
+              {isResending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : cooldown > 0 ? (
+                `Resend in ${formatCooldown(cooldown)}`
+              ) : (
+                'Resend Verification Email'
+              )}
             </Button>
 
             {/* Logout Button */}

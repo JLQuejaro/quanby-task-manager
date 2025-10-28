@@ -25,10 +25,12 @@ const PUBLIC_PATHS = [
   '/login',
   '/register',
   '/forgot-password',
-  '/reset-password',  // Added this!
+  '/reset-password',
   '/auth/callback',
   '/callback',
-  '/set-password'
+  '/set-password',
+  '/verify-email',  // Added this - verification page should be public
+  '/verify-email-notice'  // Added this too
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -78,11 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
           console.log('✅ User loaded from localStorage:', parsedUser.email);
           console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
+          console.log('📧 Email verified:', parsedUser.emailVerified);
           
-          // Redirect to password setup if needed
+          // CRITICAL FIX: Check email verification status first
           const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
           
-          if (!hasPassword && !isPublicPath) {
+          if (!parsedUser.emailVerified && !isPublicPath && pathname !== '/verify-email-notice') {
+            console.log('⚠️ Email not verified, redirecting to notice page');
+            router.push('/verify-email-notice');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Then redirect to password setup if needed
+          if (parsedUser.emailVerified && !hasPassword && !isPublicPath && pathname !== '/set-password') {
             console.log('⚠️ Password not set, redirecting to setup page');
             router.push('/set-password');
           }
@@ -123,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       console.log('✅ User logged in:', response.user.email);
       console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
+      console.log('📧 Email verified:', response.user.emailVerified);
       
       addNotification(
         'auth_status',
@@ -132,8 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { action: 'login', email: response.user.email }
       );
       
-      // Redirect based on password status
-      if (!hasPassword) {
+      // Redirect based on verification and password status
+      if (!response.user.emailVerified) {
+        router.push('/verify-email-notice');
+      } else if (!hasPassword) {
         router.push('/set-password');
       } else {
         router.push('/dashboard');

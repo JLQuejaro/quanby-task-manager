@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
@@ -8,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { 
-  User, 
-  Mail, 
-  Key, 
-  Bell, 
-  Moon, 
-  Sun, 
+import {
+  User,
+  Mail,
+  Key,
+  Bell,
+  Moon,
+  Sun,
   LogOut,
   Shield,
   Trash2,
@@ -22,24 +21,53 @@ import {
   EyeOff,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  Check,
+  X
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Password validation function
+const validatePassword = (password: string) => {
+  const requirements = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    noSpaces: !/\s/.test(password),
+  };
+
+  const allValid = Object.values(requirements).every(Boolean);
+
+  return { requirements, allValid };
+};
+
 export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { addNotification } = useNotifications();
   const { user, logout } = useAuth();
-  
+
   const [hasPassword, setHasPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const isGoogleUser = user?.authProvider === 'google';
-  
+
   // Password change form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -50,12 +78,16 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [taskReminders, setTaskReminders] = useState(true);
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);
+
+  const passwordValidation = validatePassword(newPassword);
+  const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -67,12 +99,10 @@ export default function SettingsPage() {
             'Authorization': `Bearer ${token}`,
           },
         });
-
         if (response.ok) {
           const data = await response.json();
           setHasPassword(data.hasPassword);
         }
-
         // Load notification preferences - store per user
         const userEmail = user?.email;
         if (userEmail) {
@@ -92,7 +122,6 @@ export default function SettingsPage() {
         setIsLoading(false);
       }
     };
-
     loadUserData();
   }, [user?.email]);
 
@@ -102,16 +131,31 @@ export default function SettingsPage() {
     setPasswordSuccess('');
     setIsChangingPassword(true);
 
-    // Validation
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    // Validation - Check all password requirements
+    if (!passwordValidation.allValid) {
+      setPasswordError('Password does not meet all requirements');
+      setShowPasswordRequirements(true);
       setIsChangingPassword(false);
+      addNotification(
+        'auth_status',
+        'Invalid Password',
+        'Please ensure your password meets all the requirements.',
+        undefined,
+        { action: 'password_validation_failed' }
+      );
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
       setPasswordError('New passwords do not match');
       setIsChangingPassword(false);
+      addNotification(
+        'auth_status',
+        'Passwords Do Not Match',
+        'Please make sure both password fields are identical.',
+        undefined,
+        { action: 'password_mismatch' }
+      );
       return;
     }
 
@@ -121,22 +165,14 @@ export default function SettingsPage() {
       return;
     }
 
-    if (hasPassword && currentPassword === newPassword) {
-      setPasswordError('New password must be different from current password');
-      setIsChangingPassword(false);
-      return;
-    }
-
     try {
       const token = localStorage.getItem('token');
-      const endpoint = hasPassword 
+      const endpoint = hasPassword
         ? `${API_URL}/api/auth/change-password`
         : `${API_URL}/api/auth/set-password`;
-
-      const body = hasPassword 
+      const body = hasPassword
         ? { oldPassword: currentPassword, newPassword }
         : { password: newPassword };
-
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -145,19 +181,15 @@ export default function SettingsPage() {
         },
         body: JSON.stringify(body),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message || `Failed to ${hasPassword ? 'change' : 'set'} password`);
       }
-
-      const successMessage = hasPassword 
+      const successMessage = hasPassword
         ? 'Password changed successfully!'
         : 'Password set successfully! You can now login with email and password.';
-
       setPasswordSuccess(successMessage);
-      
+
       addNotification(
         'auth_status',
         hasPassword ? 'Password Changed' : 'Password Set',
@@ -165,17 +197,16 @@ export default function SettingsPage() {
         undefined,
         { action: hasPassword ? 'password_changed' : 'password_set' }
       );
-
       // Clear form
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-      
+      setShowPasswordRequirements(false);
+
       // Update hasPassword state if it was a first-time set
       if (!hasPassword) {
         setHasPassword(true);
       }
-
       // Clear success message after 5 seconds
       setTimeout(() => {
         setPasswordSuccess('');
@@ -183,7 +214,7 @@ export default function SettingsPage() {
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to change password';
       setPasswordError(errorMessage);
-      
+
       addNotification(
         'auth_status',
         'Password Change Failed',
@@ -197,22 +228,24 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    const confirmed = window.confirm('Are you sure you want to log out?');
-    if (confirmed) {
-      logout();
-    }
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    logout();
+    setShowLogoutConfirm(false);
   };
 
   const handleDeleteAccount = () => {
     const confirmed = window.confirm(
       '⚠️ WARNING: This will permanently delete your account and all data. This action cannot be undone. Are you absolutely sure?'
     );
-    
+
     if (confirmed) {
       const doubleConfirm = window.confirm(
         'This is your last chance. Click OK to confirm account deletion.'
       );
-      
+
       if (doubleConfirm) {
         addNotification(
           'auth_status',
@@ -233,14 +266,14 @@ export default function SettingsPage() {
       deadlineAlerts,
       [key]: value
     };
-    
+
     // Store preferences per user
     const userEmail = user?.email;
     if (userEmail) {
       const prefsKey = `notification_preferences_${userEmail}`;
       localStorage.setItem(prefsKey, JSON.stringify(prefs));
     }
-    
+
     // Show specific notification based on which preference changed
     const notificationMessages: { [key: string]: { title: string; message: string } } = {
       emailNotifications: {
@@ -260,7 +293,6 @@ export default function SettingsPage() {
         message: value ? 'Deadline alerts have been enabled' : 'Deadline alerts have been disabled'
       }
     };
-
     const notification = notificationMessages[key];
     addNotification(
       'task_updated',
@@ -287,7 +319,7 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
       <Header title="Settings" showSearch={false} />
-      
+
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         {/* Account Section */}
         <Card className="rounded-2xl bg-white dark:bg-gray-900 border dark:border-gray-800">
@@ -296,7 +328,7 @@ export default function SettingsPage() {
               <User className="h-5 w-5 text-[#4169E1]" />
               Account
             </h2>
-            
+
             <div className="space-y-4">
               {/* Profile Info */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -332,7 +364,7 @@ export default function SettingsPage() {
               <Shield className="h-5 w-5 text-[#4169E1]" />
               Security
             </h2>
-            
+
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Key className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -349,7 +381,6 @@ export default function SettingsPage() {
                   </span>
                 )}
               </div>
-
               {/* Info message for Google users without password */}
               {isGoogleUser && !hasPassword && (
                 <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800">
@@ -366,7 +397,6 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
-
               <form onSubmit={handlePasswordChange} className="space-y-5">
                 {/* Current Password - Only show if user has password */}
                 {hasPassword && (
@@ -395,7 +425,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
-
                 {/* New Password */}
                 <div className="space-y-2">
                   <Label htmlFor="newPassword" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -407,7 +436,8 @@ export default function SettingsPage() {
                       type={showNewPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder={hasPassword ? 'Enter new password' : 'Enter password (min. 6 characters)'}
+                      onFocus={() => setShowPasswordRequirements(true)}
+                      placeholder={hasPassword ? 'Enter new password' : 'Enter password (min. 8 characters)'}
                       className="pr-10 h-11 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
                       required
                     />
@@ -420,12 +450,43 @@ export default function SettingsPage() {
                       {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    <Key className="h-3 w-3" />
-                    Must be at least 6 characters
-                  </p>
-                </div>
 
+                  {/* Password Requirements */}
+                  {showPasswordRequirements && newPassword.length > 0 && (
+                    <div className="mt-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2">
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Password Requirements:
+                      </p>
+                      <div className="space-y-1.5">
+                        {[
+                          { valid: passwordValidation.requirements.minLength, text: 'Minimum of 8 characters' },
+                          { valid: passwordValidation.requirements.hasUppercase, text: 'At least one uppercase letter (A–Z)' },
+                          { valid: passwordValidation.requirements.hasLowercase, text: 'At least one lowercase letter (a–z)' },
+                          { valid: passwordValidation.requirements.hasNumber, text: 'At least one number (0–9)' },
+                          { valid: passwordValidation.requirements.hasSpecial, text: 'At least one special symbol (! @ # $ % ^ & *)' },
+                          { valid: passwordValidation.requirements.noSpaces, text: 'No spaces allowed' },
+                        ].map((requirement, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            {requirement.valid ? (
+                              <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                            ) : (
+                              <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                            )}
+                            <span
+                              className={`text-xs ${
+                                requirement.valid
+                                  ? 'text-green-700 dark:text-green-400'
+                                  : 'text-gray-600 dark:text-gray-400'
+                              }`}
+                            >
+                              {requirement.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Confirm New Password */}
                 <div className="space-y-2">
                   <Label htmlFor="confirmNewPassword" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -450,8 +511,28 @@ export default function SettingsPage() {
                       {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                </div>
 
+                  {/* Password Match Indicator */}
+                  {confirmNewPassword.length > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      {passwordsMatch ? (
+                        <>
+                          <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <span className="text-xs text-green-700 dark:text-green-400">
+                            Passwords match
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          <span className="text-xs text-red-600 dark:text-red-400">
+                            Passwords do not match
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {/* Error Message */}
                 {passwordError && (
                   <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-in fade-in slide-in-from-top-2">
@@ -461,7 +542,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
-
                 {/* Success Message */}
                 {passwordSuccess && (
                   <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 animate-in fade-in slide-in-from-top-2">
@@ -471,12 +551,11 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
-
                 {/* Submit Button */}
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 bg-[#4169E1] hover:bg-[#3558CC] rounded-xl text-base font-semibold shadow-sm hover:shadow-md transition-all"
-                  disabled={isChangingPassword}
+                  disabled={isChangingPassword || !passwordValidation.allValid || !passwordsMatch}
                 >
                   {isChangingPassword ? (
                     <span className="flex items-center gap-2">
@@ -506,7 +585,7 @@ export default function SettingsPage() {
               )}
               Appearance
             </h2>
-            
+
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
@@ -531,7 +610,7 @@ export default function SettingsPage() {
               <Bell className="h-5 w-5 text-[#4169E1]" />
               Notifications
             </h2>
-            
+
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center justify-between">
@@ -550,7 +629,6 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
@@ -561,14 +639,13 @@ export default function SettingsPage() {
                   </div>
                   <Switch
                     checked={pushNotifications}
-                    onCheckedChange={(checked : boolean) => {
+                    onCheckedChange={(checked: boolean) => {
                       setPushNotifications(checked);
                       saveNotificationPreferences('pushNotifications', checked);
                     }}
                   />
                 </div>
               </div>
-
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
@@ -579,14 +656,13 @@ export default function SettingsPage() {
                   </div>
                   <Switch
                     checked={taskReminders}
-                    onCheckedChange={(checked : boolean) => {
+                    onCheckedChange={(checked: boolean) => {
                       setTaskReminders(checked);
                       saveNotificationPreferences('taskReminders', checked);
                     }}
                   />
                 </div>
               </div>
-
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
@@ -614,7 +690,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">
               Danger Zone
             </h2>
-            
+
             <div className="space-y-4">
               {/* Logout */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -637,7 +713,6 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-
               {/* Delete Account */}
               <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-900">
                 <div className="flex items-center justify-between">
@@ -671,6 +746,31 @@ export default function SettingsPage() {
           <p className="mt-1">© 2025 All rights reserved</p>
         </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
+              Confirm Logout
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to logout? You will need to sign in again to access your tasks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLogout}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white"
+            >
+              Yes, Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

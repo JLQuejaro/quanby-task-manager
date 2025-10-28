@@ -7,6 +7,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
+import { ConfirmUpdateDialog } from './ConfirmUpdateDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +43,72 @@ const priorityConfig = {
 
 const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [pendingToggleState, setPendingToggleState] = useState<boolean | null>(null);
+
+  /**
+   * Handle Toggle Complete
+   * 
+   * Shows confirmation dialog before marking task as complete or reopening it.
+   */
+  const handleToggleComplete = (checked: boolean) => {
+    setPendingToggleState(checked);
+    if (checked) {
+      // Marking as complete
+      setShowCompleteDialog(true);
+    } else {
+      // Reopening task
+      setShowReopenDialog(true);
+    }
+  };
+
+  /**
+   * Confirm Complete
+   * 
+   * Marks the task as completed after user confirmation.
+   */
+  const confirmComplete = () => {
+    if (pendingToggleState !== null) {
+      onToggleComplete(task.id, pendingToggleState);
+      setPendingToggleState(null);
+    }
+    setShowCompleteDialog(false);
+  };
+
+  /**
+   * Confirm Reopen
+   * 
+   * Reopens the task after user confirmation.
+   */
+  const confirmReopen = () => {
+    if (pendingToggleState !== null) {
+      onToggleComplete(task.id, pendingToggleState);
+      setPendingToggleState(null);
+    }
+    setShowReopenDialog(false);
+  };
+
+  /**
+   * Handle Edit Click
+   * 
+   * Opens confirmation dialog before allowing task edit.
+   * This ensures users don't accidentally modify tasks.
+   */
+  const handleEdit = () => {
+    setShowUpdateDialog(true);
+  };
+
+  /**
+   * Confirm Update
+   * 
+   * Opens the edit form after user confirms they want to edit the task.
+   */
+  const confirmUpdate = () => {
+    onEdit(task);
+    setShowUpdateDialog(false);
+  };
 
   /**
    * Handle Delete Click
@@ -71,7 +148,7 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) =
         <div className="flex items-start gap-3">
           <Checkbox
             checked={task.completed}
-            onCheckedChange={(checked) => onToggleComplete(task.id, !!checked)}
+            onCheckedChange={handleToggleComplete}
             className="mt-1"
           />
           <div className="flex-1 min-w-0">
@@ -141,7 +218,7 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) =
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-md rounded-xl">
                   <DropdownMenuItem
-                    onClick={() => onEdit(task)}
+                    onClick={handleEdit}
                     className="hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-800 focus:text-gray-900 dark:focus:text-gray-100"
                   >
                     <Pencil className="mr-2 h-4 w-4" />
@@ -166,6 +243,74 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) =
         onConfirm={confirmDelete}
         taskTitle={task.title}
       />
+      <ConfirmUpdateDialog
+        open={showUpdateDialog}
+        onClose={() => setShowUpdateDialog(false)}
+        onConfirm={confirmUpdate}
+        taskTitle={task.title}
+      />
+
+      {/* Complete Task Confirmation Dialog */}
+      <AlertDialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
+              Complete Task
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you completed this task <span className="font-semibold text-gray-900 dark:text-gray-100">"{task.title}"</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowCompleteDialog(false);
+                setPendingToggleState(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmComplete}
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white"
+            >
+              Yes, Mark as Complete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reopen Task Confirmation Dialog */}
+      <AlertDialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
+              Reopen Task
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to reopen this task <span className="font-semibold text-gray-900 dark:text-gray-100">"{task.title}"</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowReopenDialog(false);
+                setPendingToggleState(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReopen}
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
+            >
+              Yes, Reopen Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
