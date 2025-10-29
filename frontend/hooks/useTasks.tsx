@@ -58,13 +58,16 @@ export function useTasks() {
     mutationFn: tasksApi.delete,
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      const task = tasks.find(t => t.id === id);
-      addNotification(
-        'task_deleted',
-        'Task Deleted',
-        `"${task?.title || 'Task'}" has been deleted`,
-        id
-      );
+      // Remove notification in localhost/development environment
+      if (process.env.NODE_ENV !== 'development') {
+        const task = tasks.find(t => t.id === id);
+        addNotification(
+          'task_deleted',
+          'Task Deleted',
+          `"${task?.title || 'Task'}" has been deleted`,
+          id
+        );
+      }
     },
     onError: (error: any) => {
       addNotification(
@@ -116,6 +119,12 @@ export function useTasks() {
   };
 
   const deleteTask = (id: number) => {
+    // Skip confirmation dialog in development/localhost
+    if (process.env.NODE_ENV === 'development') {
+      deleteMutation.mutate(id);
+      return;
+    }
+
     const confirmed = window.confirm(
       'Are you sure you want to permanently delete this task? This action cannot be undone.'
     );

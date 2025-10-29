@@ -271,9 +271,6 @@ let AuthService = class AuthService {
         if (newPassword !== newPasswordConfirm) {
             throw new common_1.BadRequestException('New passwords do not match');
         }
-        if (currentPassword === newPassword) {
-            throw new common_1.BadRequestException('New password must be different from current password');
-        }
         this.validatePasswordStrength(newPassword);
         const [user] = await db_1.db.select()
             .from(schema_1.users)
@@ -284,8 +281,8 @@ let AuthService = class AuthService {
         if (!user.password || user.password.length === 0) {
             throw new common_1.UnauthorizedException('No password set. Use set password instead.');
         }
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
-        if (!isMatch) {
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
             await this.securityLogService.log({
                 userId,
                 email: user.email,
@@ -296,6 +293,19 @@ let AuthService = class AuthService {
                 metadata: { reason: 'Incorrect current password' },
             });
             throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        const isSameAsCurrentPassword = await bcrypt.compare(newPassword, user.password);
+        if (isSameAsCurrentPassword) {
+            await this.securityLogService.log({
+                userId,
+                email: user.email,
+                eventType: 'password_change_failed',
+                success: false,
+                ipAddress,
+                userAgent,
+                metadata: { reason: 'New password same as current' },
+            });
+            throw new common_1.BadRequestException('New password must be different from current password');
         }
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await db_1.db.update(schema_1.users)
@@ -321,14 +331,31 @@ let AuthService = class AuthService {
         };
     }
     validatePasswordStrength(password) {
+        if (!password || typeof password !== 'string') {
+            throw new common_1.BadRequestException('Password is required');
+        }
         if (password.length < 8) {
             throw new common_1.BadRequestException('Password must be at least 8 characters long');
         }
         const hasUpperCase = /[A-Z]/.test(password);
+        if (!hasUpperCase) {
+            throw new common_1.BadRequestException('Password must contain at least one uppercase letter (A-Z)');
+        }
         const hasLowerCase = /[a-z]/.test(password);
+        if (!hasLowerCase) {
+            throw new common_1.BadRequestException('Password must contain at least one lowercase letter (a-z)');
+        }
         const hasNumber = /[0-9]/.test(password);
-        if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-            throw new common_1.BadRequestException('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+        if (!hasNumber) {
+            throw new common_1.BadRequestException('Password must contain at least one number (0-9)');
+        }
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        if (!hasSpecialChar) {
+            throw new common_1.BadRequestException('Password must contain at least one special character (!@#$%^&*)');
+        }
+        const hasSpaces = /\s/.test(password);
+        if (hasSpaces) {
+            throw new common_1.BadRequestException('Password must not contain spaces');
         }
     }
     async createSession(userId, token, ipAddress, deviceInfo) {

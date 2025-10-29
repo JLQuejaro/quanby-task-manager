@@ -131,6 +131,13 @@ let AuthController = class AuthController {
     }
     async changePassword(req, changePasswordDto, ip, userAgent) {
         const user = req.user;
+        console.log('🔐 Backend received DTO:', {
+            currentPassword: changePasswordDto.currentPassword ? `${changePasswordDto.currentPassword.length} chars` : 'MISSING',
+            newPassword: changePasswordDto.newPassword ? `${changePasswordDto.newPassword.length} chars` : 'MISSING',
+            newPasswordConfirm: changePasswordDto.newPasswordConfirm ? `${changePasswordDto.newPasswordConfirm.length} chars` : 'MISSING',
+            dtoKeys: Object.keys(changePasswordDto),
+            dtoType: typeof changePasswordDto,
+        });
         return this.authService.changePassword(user.id, changePasswordDto.currentPassword, changePasswordDto.newPassword, changePasswordDto.newPasswordConfirm, ip, userAgent);
     }
     async hasPassword(req) {

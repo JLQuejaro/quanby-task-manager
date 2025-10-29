@@ -181,7 +181,7 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) =
                     </Badge>
                   )}
 
-                  {/* Deadline */}
+                  {/* Deadline with Time */}
                   {task.deadline && (
                     <div className={cn(
                       'flex items-center gap-1 text-xs',
@@ -190,7 +190,11 @@ const TaskCard = ({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) =
                         : 'text-gray-500 dark:text-gray-500'
                     )}>
                       <Calendar className="w-3 h-3" />
-                      <span>{format(parseISO(task.deadline), 'MMM d, yyyy')}</span>
+                      <span>
+                        {format(parseISO(task.deadline), 'MMM d, yyyy')}
+                        {' at '}
+                        {format(parseISO(task.deadline), 'h:mm a')}
+                      </span>
                       {isOverdue && <span className="ml-1">(Overdue)</span>}
                     </div>
                   )}

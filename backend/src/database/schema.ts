@@ -36,3 +36,19 @@ export const tasks = pgTable('tasks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const archivedTasks = pgTable('archived_tasks', {
+  id: serial('id').primaryKey(),
+  originalTaskId: integer('original_task_id').notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  priority: varchar('priority', { length: 20 }).notNull().default('medium'),
+  deadline: timestamp('deadline'),
+  completed: boolean('completed').default(false).notNull(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  originalCreatedAt: timestamp('original_created_at'),
+  originalUpdatedAt: timestamp('original_updated_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

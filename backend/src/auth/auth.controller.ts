@@ -256,6 +256,15 @@ export class AuthController {
   ) {
     const user = (req as any).user;
 
+    // ADD THIS DEBUG LOGGING
+    console.log('🔐 Backend received DTO:', {
+      currentPassword: changePasswordDto.currentPassword ? `${changePasswordDto.currentPassword.length} chars` : 'MISSING',
+      newPassword: changePasswordDto.newPassword ? `${changePasswordDto.newPassword.length} chars` : 'MISSING',
+      newPasswordConfirm: changePasswordDto.newPasswordConfirm ? `${changePasswordDto.newPasswordConfirm.length} chars` : 'MISSING',
+      dtoKeys: Object.keys(changePasswordDto),
+      dtoType: typeof changePasswordDto,
+    });
+
     return this.authService.changePassword(
       user.id,
       changePasswordDto.currentPassword,

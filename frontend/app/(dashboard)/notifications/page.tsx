@@ -15,6 +15,11 @@ import {
   Check,
   X,
   RotateCcw,
+  Archive,
+  Key,
+  Shield,
+  Mail,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NotificationType } from '@/lib/notification';
@@ -43,13 +48,37 @@ type Notification = {
 /* ------------------------------------------------------------------ */
 const getNotificationIcon = (type: NotificationType) => {
   const map: Record<NotificationType, React.ReactNode> = {
+    // Task notifications
     task_created: <Info className="h-5 w-5 text-blue-500" />,
     task_updated: <Info className="h-5 w-5 text-blue-500" />,
     task_completed: <CheckCircle2 className="h-5 w-5 text-green-500" />,
     task_deleted: <Trash2 className="h-5 w-5 text-red-500" />,
+    task_restored: <RotateCcw className="h-5 w-5 text-green-500" />,
+    
+    // Deadline notifications
     deadline_reminder: <Bell className="h-5 w-5 text-yellow-500" />,
     overdue_alert: <AlertCircle className="h-5 w-5 text-red-500" />,
+    
+    // Archive notifications
+    archive_cleared: <Archive className="h-5 w-5 text-orange-500" />,
+    
+    // Auth notifications
     auth_status: <LogIn className="h-5 w-5 text-purple-500" />,
+    auth_success: <CheckCircle2 className="h-5 w-5 text-green-500" />,
+    auth_error: <XCircle className="h-5 w-5 text-red-500" />,
+    auth_conflict: <AlertCircle className="h-5 w-5 text-orange-500" />,
+    
+    // Password notifications
+    password_changed: <Key className="h-5 w-5 text-green-500" />,
+    password_change_failed: <XCircle className="h-5 w-5 text-red-500" />,
+    
+    // Verification notifications
+    verification_required: <Mail className="h-5 w-5 text-blue-500" />,
+    verification_resent: <Mail className="h-5 w-5 text-green-500" />,
+    resend_failed: <XCircle className="h-5 w-5 text-red-500" />,
+    
+    // Default/error fallback
+    error: <XCircle className="h-5 w-5 text-red-500" />,
   };
   return map[type] ?? <Bell className="h-5 w-5 text-gray-500" />;
 };
@@ -57,13 +86,37 @@ const getNotificationIcon = (type: NotificationType) => {
 const getNotificationBgColor = (type: NotificationType, read: boolean) => {
   if (read) return 'bg-gray-50 dark:bg-gray-900/50';
   const colorMap: Record<NotificationType, string> = {
+    // Task notifications
     task_created: 'bg-blue-50 dark:bg-blue-950/20',
     task_updated: 'bg-blue-50 dark:bg-blue-950/20',
     task_completed: 'bg-green-50 dark:bg-green-950/20',
     task_deleted: 'bg-red-50 dark:bg-red-950/20',
+    task_restored: 'bg-green-50 dark:bg-green-950/20',
+    
+    // Deadline notifications
     deadline_reminder: 'bg-yellow-50 dark:bg-yellow-950/20',
     overdue_alert: 'bg-red-50 dark:bg-red-950/20',
+    
+    // Archive notifications
+    archive_cleared: 'bg-orange-50 dark:bg-orange-950/20',
+    
+    // Auth notifications
     auth_status: 'bg-purple-50 dark:bg-purple-950/20',
+    auth_success: 'bg-green-50 dark:bg-green-950/20',
+    auth_error: 'bg-red-50 dark:bg-red-950/20',
+    auth_conflict: 'bg-orange-50 dark:bg-orange-950/20',
+    
+    // Password notifications
+    password_changed: 'bg-green-50 dark:bg-green-950/20',
+    password_change_failed: 'bg-red-50 dark:bg-red-950/20',
+    
+    // Verification notifications
+    verification_required: 'bg-blue-50 dark:bg-blue-950/20',
+    verification_resent: 'bg-green-50 dark:bg-green-950/20',
+    resend_failed: 'bg-red-50 dark:bg-red-950/20',
+    
+    // Default/error fallback
+    error: 'bg-red-50 dark:bg-red-950/20',
   };
   return colorMap[type] ?? 'bg-gray-50 dark:bg-gray-900/50';
 };
@@ -111,7 +164,6 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!listRef.current) return;
-    /* FIXED: use querySelectorAll instead of queryAll */
     const items = Array.from(
       listRef.current.querySelectorAll<HTMLDivElement>('[role="listitem"]')
     );

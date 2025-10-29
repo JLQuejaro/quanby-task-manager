@@ -1,7 +1,5 @@
 // Export all DTOs
-export * from './register.dto';
-export * from './forgot-password.dto';
-export * from './reset-password.dto';
+// Export all DTOs from their respective files
 export * from './register.dto';
 export * from './forgot-password.dto';
 export * from './reset-password.dto';

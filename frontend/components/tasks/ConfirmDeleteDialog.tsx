@@ -25,7 +25,7 @@ export function ConfirmDeleteDialog({ open, onClose, onConfirm, taskTitle }: Con
         <p className="text-gray-600 dark:text-gray-400">
           Are you sure you want to delete <span className="font-medium">"{taskTitle}"</span>?
           <br />
-          It will be moved to trash and can be recovered within 30 days.
+          It will be moved to ‘Task Archive’ and can be recovered within 30 days.
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

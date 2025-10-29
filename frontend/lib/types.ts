@@ -10,6 +10,22 @@ export interface User {
   emailVerified?: boolean;  // ✅ FIXED: Changed from isEmailVerified to match backend
 }
 
+export interface ArchivedTask {
+  id: number;
+  originalTaskId: number;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  deadline?: string;
+  completed: boolean;
+  userId: number;
+  deletedAt: string;
+  expiresAt: string;
+  originalCreatedAt?: string;
+  originalUpdatedAt?: string;
+  createdAt: string;
+}
+
 // Task types
 export interface Task {
   id: number;

@@ -1,7 +1,6 @@
 // Load .env BEFORE any other imports
 import * as dotenv from 'dotenv';
 dotenv.config();
-
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -25,11 +24,17 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // Enable validation
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
+  // CRITICAL: Enable validation with proper configuration
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,           // Strip properties without decorators
+      forbidNonWhitelisted: false, // Don't throw error for extra properties
+      transform: true,            // Transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   // Swagger setup
   const swaggerConfig = new DocumentBuilder()
@@ -45,12 +50,12 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
   await app.listen(port);
   
-  console.log(`\n🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
-  console.log(`🔐 Google OAuth: http://localhost:${port}/api/auth/google`);
-  console.log(`📍 OAuth Callback: http://localhost:${port}/api/auth/callback/google`);
-  console.log(`📝 Register: http://localhost:${port}/api/auth/register`);
-  console.log(`🔑 Login: http://localhost:${port}/api/auth/login`);
-  console.log(`✉️  Verify Email: http://localhost:${port}/api/auth/verify-email\n`);
+  console.log('\n🚀 Application is running on: http://localhost:' + port);
+  console.log('📚 Swagger docs: http://localhost:' + port + '/api/docs');
+  console.log('🔐 Google OAuth: http://localhost:' + port + '/api/auth/google');
+  console.log('📍 OAuth Callback: http://localhost:' + port + '/api/auth/callback/google');
+  console.log('📝 Register: http://localhost:' + port + '/api/auth/register');
+  console.log('🔑 Login: http://localhost:' + port + '/api/auth/login');
+  console.log('✉️  Verify Email: http://localhost:' + port + '/api/auth/verify-email\n');
 }
 bootstrap();

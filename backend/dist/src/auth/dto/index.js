@@ -18,9 +18,6 @@ exports.ResendVerificationDto = exports.VerifyEmailDto = exports.GoogleOAuthCall
 __exportStar(require("./register.dto"), exports);
 __exportStar(require("./forgot-password.dto"), exports);
 __exportStar(require("./reset-password.dto"), exports);
-__exportStar(require("./register.dto"), exports);
-__exportStar(require("./forgot-password.dto"), exports);
-__exportStar(require("./reset-password.dto"), exports);
 __exportStar(require("./verify-email.dto"), exports);
 __exportStar(require("./change-password.dto"), exports);
 __exportStar(require("./set-password.dto"), exports);

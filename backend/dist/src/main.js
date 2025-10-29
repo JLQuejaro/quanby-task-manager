@@ -52,7 +52,11 @@ async function bootstrap() {
     });
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
+        forbidNonWhitelisted: false,
         transform: true,
+        transformOptions: {
+            enableImplicitConversion: true,
+        },
     }));
     const swaggerConfig = new swagger_1.DocumentBuilder()
         .setTitle('Quanby Task Manager API')
@@ -64,13 +68,13 @@ async function bootstrap() {
     swagger_1.SwaggerModule.setup('api/docs', app, document);
     const port = process.env.PORT || 3001;
     await app.listen(port);
-    console.log(`\n🚀 Application is running on: http://localhost:${port}`);
-    console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
-    console.log(`🔐 Google OAuth: http://localhost:${port}/api/auth/google`);
-    console.log(`📍 OAuth Callback: http://localhost:${port}/api/auth/callback/google`);
-    console.log(`📝 Register: http://localhost:${port}/api/auth/register`);
-    console.log(`🔑 Login: http://localhost:${port}/api/auth/login`);
-    console.log(`✉️  Verify Email: http://localhost:${port}/api/auth/verify-email\n`);
+    console.log('\n🚀 Application is running on: http://localhost:' + port);
+    console.log('📚 Swagger docs: http://localhost:' + port + '/api/docs');
+    console.log('🔐 Google OAuth: http://localhost:' + port + '/api/auth/google');
+    console.log('📍 OAuth Callback: http://localhost:' + port + '/api/auth/callback/google');
+    console.log('📝 Register: http://localhost:' + port + '/api/auth/register');
+    console.log('🔑 Login: http://localhost:' + port + '/api/auth/login');
+    console.log('✉️  Verify Email: http://localhost:' + port + '/api/auth/verify-email\n');
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

@@ -87,4 +87,28 @@ export const tasksApi = {
   },
 };
 
+// Archive API
+export const archiveApi = {
+  getArchived: async () => {
+    const { data } = await api.get('/api/tasks/archived/all');
+    return data;
+  },
+
+  restore: async (id: number) => {
+    const { data } = await api.post(`/api/tasks/archived/${id}/restore`);
+    return data;
+  },
+
+  permanentlyDelete: async (id: number) => {
+    const { data } = await api.delete(`/api/tasks/archived/${id}`);
+    return data;
+  },
+
+  clearAll: async () => {
+    const { data } = await api.delete('/api/tasks/archived/clear-all/all');
+    return data;
+  },
+};
+
+
 export default api;

@@ -13,7 +13,10 @@ export type NotificationType =
   | 'auth_success'
   | 'auth_error'
   | 'verification_resent'
-  | 'resend_failed';
+  | 'resend_failed'
+  | 'task_restored'    
+  | 'archive_cleared'   
+  | 'error';   
 
 export type NotificationChannel = 'toast' | 'email' | 'in_app';
 

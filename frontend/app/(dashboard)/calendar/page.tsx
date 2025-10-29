@@ -349,6 +349,7 @@ export default function CalendarPage() {
                 {[
                   { label: 'Day', tasks: selectedDateTasks },
                   { label: 'Week', tasks: weekTasks },
+                  { label: 'Month', tasks: monthTasks },
                   { label: 'Year', tasks: yearTasks },
                 ].map((summary, i: number) => (
                   <div key={i} className="flex items-center justify-between py-2">
@@ -430,27 +431,6 @@ export default function CalendarPage() {
             </Card>
           </div>
         </div>
-      </div>
-
-      {/* Trash Section */}
-      <div className="p-6">
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-lg dark:text-white">Trash</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {trash.length > 0 ? (
-              <TaskList
-                tasks={trash}
-                onToggleComplete={() => {}}
-                onEdit={() => {}}
-                onDelete={handleRecoverTask}
-              />
-            ) : (
-              <p className="text-center py-12 text-gray-500 dark:text-gray-400">No tasks in trash.</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Dialogs */}

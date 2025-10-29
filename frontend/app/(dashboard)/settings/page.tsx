@@ -1,4 +1,5 @@
 'use client';
+import { archiveApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
@@ -23,7 +24,11 @@ import {
   AlertCircle,
   Info,
   Check,
-  X
+  X,
+  Archive,
+  RotateCcw,
+  Calendar,
+  Folder
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -38,6 +43,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -51,18 +57,24 @@ const validatePassword = (password: string) => {
     hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
     noSpaces: !/\s/.test(password),
   };
-
   const allValid = Object.values(requirements).every(Boolean);
-
   return { requirements, allValid };
 };
+
+interface ArchivedTask {
+  id: string;
+  title: string;
+  description?: string;
+  deletedAt: string;
+  expiresAt: string;
+  priority: 'low' | 'medium' | 'high';
+}
 
 export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { addNotification } = useNotifications();
   const { user, logout } = useAuth();
-
   const [hasPassword, setHasPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -79,12 +91,22 @@ export default function SettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [taskReminders, setTaskReminders] = useState(true);
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);
+
+  // Archive
+  const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
+  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<{ id: string; title: string } | null>(null);
 
   const passwordValidation = validatePassword(newPassword);
   const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
@@ -116,6 +138,8 @@ export default function SettingsPage() {
             setDeadlineAlerts(prefs.deadlineAlerts ?? true);
           }
         }
+        // Load archived tasks
+        loadArchivedTasks();
       } catch (error) {
         console.error('Failed to load user data:', error);
       } finally {
@@ -125,19 +149,171 @@ export default function SettingsPage() {
     loadUserData();
   }, [user?.email]);
 
+  const loadArchivedTasks = async () => {
+    try {
+      setIsLoadingArchive(true);
+      const data = await archiveApi.getArchived();
+      setArchivedTasks(data);
+    } catch (error) {
+      console.error('Failed to load archived tasks:', error);
+      addNotification(
+        'error',
+        'Load Failed',
+        'Failed to load archived tasks.',
+        undefined,
+        { action: 'load_archive_failed' }
+      );
+    } finally {
+      setIsLoadingArchive(false);
+    }
+  };
+
+  const handleRestoreTask = async (taskId: string, taskTitle: string) => {
+    setSelectedTask({ id: taskId, title: taskTitle });
+    setShowRestoreDialog(true);
+  };
+
+  const confirmRestoreTask = async () => {
+    if (!selectedTask) return;
+    try {
+      await archiveApi.restore(Number(selectedTask.id));
+
+      addNotification(
+        'task_restored',
+        'Task Restored ✓',
+        `"${selectedTask.title}" has been successfully restored to your task list.`,
+        Number(selectedTask.id),
+        { action: 'task_restored', taskId: selectedTask.id }
+      );
+
+      loadArchivedTasks();
+      setShowRestoreDialog(false);
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Failed to restore task:', error);
+      addNotification(
+        'error',
+        'Restore Failed',
+        'Failed to restore task. Please try again.',
+        undefined,
+        { action: 'restore_failed' }
+      );
+      setShowRestoreDialog(false);
+      setSelectedTask(null);
+    }
+  };
+
+  const handlePermanentlyDelete = async (taskId: string, taskTitle: string) => {
+    setSelectedTask({ id: taskId, title: taskTitle });
+    setShowDeleteDialog(true);
+  };
+
+  const confirmPermanentlyDelete = async () => {
+    if (!selectedTask) return;
+    try {
+      await archiveApi.permanentlyDelete(Number(selectedTask.id));
+
+      addNotification(
+        'task_deleted',
+        'Task Permanently Deleted',
+        `"${selectedTask.title}" has been permanently removed from archive.`,
+        Number(selectedTask.id),
+        { action: 'permanent_delete', taskId: selectedTask.id }
+      );
+
+      loadArchivedTasks();
+      setShowDeleteDialog(false);
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      addNotification(
+        'error',
+        'Delete Failed',
+        'Failed to delete task. Please try again.',
+        undefined,
+        { action: 'delete_failed' }
+      );
+      setShowDeleteDialog(false);
+      setSelectedTask(null);
+    }
+  };
+
+  const handleClearAllArchived = async () => {
+    if (archivedTasks.length === 0) return;
+    setShowClearAllDialog(true);
+  };
+
+  const confirmClearAll = async () => {
+    const taskCount = archivedTasks.length;
+    try {
+      await archiveApi.clearAll();
+
+      addNotification(
+        'archive_cleared',
+        'Archive Cleared',
+        `All ${taskCount} archived ${taskCount === 1 ? 'task has' : 'tasks have'} been permanently deleted.`,
+        undefined,
+        { action: 'clear_archive', taskCount }
+      );
+
+      setArchivedTasks([]);
+      setShowClearAllDialog(false);
+    } catch (error) {
+      console.error('Failed to clear archive:', error);
+      addNotification(
+        'error',
+        'Clear Failed',
+        'Failed to clear archive. Please try again.',
+        undefined,
+        { action: 'clear_failed' }
+      );
+      setShowClearAllDialog(false);
+    }
+  };
+
+  const getDaysRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    const diff = expiry.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
-    setIsChangingPassword(true);
+
+    console.log('🎯 Step 1: Form submitted');
+    console.log('🎯 Step 2: Current values:', {
+      newPassword: newPassword ? `${newPassword.length} chars` : 'EMPTY',
+      confirmNewPassword: confirmNewPassword ? `${confirmNewPassword.length} chars` : 'EMPTY',
+      currentPassword: currentPassword ? `${currentPassword.length} chars` : 'EMPTY',
+    });
+
+    // Check that passwords are actually filled in
+    if (!newPassword.trim() || !confirmNewPassword.trim()) {
+      console.log('❌ Step 3: Validation failed - empty passwords');
+      setPasswordError('Password is required');
+      addNotification(
+        'password_change_failed',
+        'Password Required',
+        'Please enter a password.',
+        undefined,
+        { action: 'password_empty' }
+      );
+      return;
+    }
+
+    console.log('✅ Step 3: Passwords not empty');
 
     // Validation - Check all password requirements
     if (!passwordValidation.allValid) {
+      console.log('❌ Step 4: Validation failed - requirements not met');
       setPasswordError('Password does not meet all requirements');
       setShowPasswordRequirements(true);
-      setIsChangingPassword(false);
       addNotification(
-        'auth_status',
+        'password_change_failed',
         'Invalid Password',
         'Please ensure your password meets all the requirements.',
         undefined,
@@ -146,11 +322,13 @@ export default function SettingsPage() {
       return;
     }
 
+    console.log('✅ Step 4: Password requirements met');
+
     if (newPassword !== confirmNewPassword) {
+      console.log('❌ Step 5: Passwords do not match');
       setPasswordError('New passwords do not match');
-      setIsChangingPassword(false);
       addNotification(
-        'auth_status',
+        'password_change_failed',
         'Passwords Do Not Match',
         'Please make sure both password fields are identical.',
         undefined,
@@ -159,44 +337,109 @@ export default function SettingsPage() {
       return;
     }
 
-    if (hasPassword && !currentPassword) {
+    console.log('✅ Step 5: Passwords match');
+
+    if (hasPassword && !currentPassword.trim()) {
+      console.log('❌ Step 6: Current password required but missing');
       setPasswordError('Please enter your current password');
-      setIsChangingPassword(false);
+      addNotification(
+        'password_change_failed',
+        'Current Password Required',
+        'Please enter your current password.',
+        undefined,
+        { action: 'current_password_required' }
+      );
       return;
     }
 
+    console.log('✅ Step 6: All validations passed');
+
+    setIsChangingPassword(true);
+
     try {
       const token = localStorage.getItem('token');
+      console.log('🔑 Step 7: Token:', token ? 'EXISTS' : 'MISSING');
+
       const endpoint = hasPassword
         ? `${API_URL}/api/auth/change-password`
         : `${API_URL}/api/auth/set-password`;
-      const body = hasPassword
-        ? { oldPassword: currentPassword, newPassword }
-        : { password: newPassword };
+
+      console.log('🎯 Step 8: Endpoint:', endpoint);
+      console.log('🎯 Step 8: hasPassword:', hasPassword);
+
+      // Construct the body with proper field names
+      const requestBody = hasPassword
+        ? {
+            currentPassword: currentPassword.trim(),
+            newPassword: newPassword.trim(),
+            newPasswordConfirm: confirmNewPassword.trim()
+          }
+        : {
+            password: newPassword.trim(),
+            passwordConfirm: confirmNewPassword.trim()
+          };
+
+      console.log('📦 Step 9: Request body constructed:', {
+        keys: Object.keys(requestBody),
+        values: Object.entries(requestBody).map(([key, val]) => 
+          `${key}: ${val.length} chars`
+        )
+      });
+
+      const bodyString = JSON.stringify(requestBody);
+      console.log('📦 Step 10: Stringified body:', bodyString);
+      console.log('📦 Step 10: Body length:', bodyString.length);
+
+      console.log('🌐 Step 11: About to fetch...');
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(body),
+        body: bodyString,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || `Failed to ${hasPassword ? 'change' : 'set'} password`);
-      }
-      const successMessage = hasPassword
-        ? 'Password changed successfully!'
-        : 'Password set successfully! You can now login with email and password.';
-      setPasswordSuccess(successMessage);
 
+      console.log('📥 Step 12: Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        contentType: response.headers.get('content-type'),
+      });
+
+      const responseText = await response.text();
+      console.log('📥 Step 13: Raw response text:', responseText);
+
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+        console.log('📥 Step 14: Parsed data:', data);
+      } catch (parseError) {
+        console.error('❌ Step 14: Failed to parse response:', parseError);
+        data = { message: 'Invalid server response' };
+      }
+
+      if (!response.ok) {
+        console.log('❌ Step 15: Response not OK, throwing error');
+        throw new Error(data.message || data.error || `Failed to ${hasPassword ? 'change' : 'set'} password`);
+      }
+
+      console.log('✅ Step 15: Success!');
+
+      const successMessage = hasPassword
+        ? 'Password changed successfully! 🎉'
+        : 'Password set successfully! You can now login with email and password. 🎉';
+
+      setPasswordSuccess(successMessage);
       addNotification(
-        'auth_status',
-        hasPassword ? 'Password Changed' : 'Password Set',
+        'password_changed',
+        hasPassword ? 'Password Changed ✓' : 'Password Set ✓',
         successMessage,
         undefined,
         { action: hasPassword ? 'password_changed' : 'password_set' }
       );
+
       // Clear form
       setCurrentPassword('');
       setNewPassword('');
@@ -207,17 +450,20 @@ export default function SettingsPage() {
       if (!hasPassword) {
         setHasPassword(true);
       }
-      // Clear success message after 5 seconds
+
+      // Close form after 2 seconds
       setTimeout(() => {
         setPasswordSuccess('');
-      }, 5000);
+        setShowPasswordForm(false);
+      }, 2000);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to change password';
+      console.error('❌ Final error:', errorMessage);
+      console.error('❌ Full error object:', err);
       setPasswordError(errorMessage);
-
       addNotification(
-        'auth_status',
-        'Password Change Failed',
+        'password_change_failed',
+        'Password Change Failed ❌',
         errorMessage,
         undefined,
         { action: 'password_error' }
@@ -240,12 +486,10 @@ export default function SettingsPage() {
     const confirmed = window.confirm(
       '⚠️ WARNING: This will permanently delete your account and all data. This action cannot be undone. Are you absolutely sure?'
     );
-
     if (confirmed) {
       const doubleConfirm = window.confirm(
         'This is your last chance. Click OK to confirm account deletion.'
       );
-
       if (doubleConfirm) {
         addNotification(
           'auth_status',
@@ -266,31 +510,27 @@ export default function SettingsPage() {
       deadlineAlerts,
       [key]: value
     };
-
-    // Store preferences per user
     const userEmail = user?.email;
     if (userEmail) {
       const prefsKey = `notification_preferences_${userEmail}`;
       localStorage.setItem(prefsKey, JSON.stringify(prefs));
     }
-
-    // Show specific notification based on which preference changed
     const notificationMessages: { [key: string]: { title: string; message: string } } = {
       emailNotifications: {
         title: 'Email Notifications',
-        message: value ? 'Email notifications have been enabled' : 'Email notifications have been disabled'
+        message: value ? 'Email notifications have been enabled ✓' : 'Email notifications have been disabled'
       },
       pushNotifications: {
         title: 'Push Notifications',
-        message: value ? 'Push notifications have been enabled' : 'Push notifications have been disabled'
+        message: value ? 'Push notifications have been enabled ✓' : 'Push notifications have been disabled'
       },
       taskReminders: {
         title: 'Task Reminders',
-        message: value ? 'Task reminders have been enabled' : 'Task reminders have been disabled'
+        message: value ? 'Task reminders have been enabled ✓' : 'Task reminders have been disabled'
       },
       deadlineAlerts: {
         title: 'Deadline Alerts',
-        message: value ? 'Deadline alerts have been enabled' : 'Deadline alerts have been disabled'
+        message: value ? 'Deadline alerts have been enabled ✓' : 'Deadline alerts have been disabled'
       }
     };
     const notification = notificationMessages[key];
@@ -319,7 +559,6 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
       <Header title="Settings" showSearch={false} />
-
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         {/* Account Section */}
         <Card className="rounded-2xl bg-white dark:bg-gray-900 border dark:border-gray-800">
@@ -328,9 +567,7 @@ export default function SettingsPage() {
               <User className="h-5 w-5 text-[#4169E1]" />
               Account
             </h2>
-
             <div className="space-y-4">
-              {/* Profile Info */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 bg-gradient-to-br from-[#4169E1] to-[#3558CC] rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -357,19 +594,149 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* Security Section - Password Change */}
+        {/* Archive Section */}
+        <Card className="rounded-2xl bg-white dark:bg-gray-900 border dark:border-gray-800">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-[#4169E1]" />
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Task Archive
+                </h2>
+                {archivedTasks.length > 0 && (
+                  <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full">
+                    {archivedTasks.length} {archivedTasks.length === 1 ? 'task' : 'tasks'}
+                  </span>
+                )}
+              </div>
+              {archivedTasks.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowArchive(!showArchive)}
+                  className="rounded-xl"
+                >
+                  {showArchive ? 'Hide' : 'Show'} Archive
+                </Button>
+              )}
+            </div>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 mb-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Deleted Tasks Storage
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    Deleted tasks are stored here for 30 days before being permanently removed. You can restore them anytime within this period.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {showArchive && (
+              <div className="space-y-3">
+                {isLoadingArchive ? (
+                  <div className="text-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent mx-auto"></div>
+                    <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading archive...</p>
+                  </div>
+                ) : archivedTasks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Folder className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-600 mb-3" />
+                    <p className="text-gray-600 dark:text-gray-400">No archived tasks</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                      Deleted tasks will appear here for 30 days
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {archivedTasks.map((task) => {
+                      const daysRemaining = getDaysRemaining(task.expiresAt);
+                      return (
+                        <div
+                          key={task.id}
+                          className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                                {task.title}
+                              </h4>
+                              {task.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                                  {task.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  task.priority === 'high'
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                    : task.priority === 'medium'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                    : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                }`}>
+                                  {task.priority}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  Expires in {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRestoreTask(task.id, task.title)}
+                                className="rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-300 dark:hover:border-green-800"
+                                title="Restore task"
+                              >
+                                <RotateCcw className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePermanentlyDelete(task.id, task.title)}
+                                className="rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-800"
+                                title="Delete permanently"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {archivedTasks.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleClearAllArchived}
+                        className="w-full mt-4 rounded-xl text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Clear All Archived Tasks
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Security Section - Password Management */}
         <Card className="rounded-2xl bg-white dark:bg-gray-900 border dark:border-gray-800">
           <div className="p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Shield className="h-5 w-5 text-[#4169E1]" />
               Security
             </h2>
-
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Key className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {hasPassword ? 'Change Password' : 'Set Password'}
+                  Password Management
                 </h3>
                 {hasPassword ? (
                   <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
@@ -381,14 +748,106 @@ export default function SettingsPage() {
                   </span>
                 )}
               </div>
+
+              {/* Action Buttons - Set Password / Change Password */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {/* Set Password Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasPassword) {
+                      setShowPasswordForm(true);
+                      setPasswordError('');
+                      setPasswordSuccess('');
+                    }
+                  }}
+                  disabled={hasPassword}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    !hasPassword
+                      ? 'border-[#4169E1] bg-[#4169E1]/5 dark:bg-[#4169E1]/10 hover:bg-[#4169E1]/10 dark:hover:bg-[#4169E1]/20 cursor-pointer'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      !hasPassword
+                        ? 'bg-[#4169E1] text-white'
+                        : 'bg-gray-300 dark:bg-gray-700 text-gray-500'
+                    }`}>
+                      <Key className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className={`font-semibold ${
+                        !hasPassword
+                          ? 'text-gray-900 dark:text-white'
+                          : 'text-gray-500 dark:text-gray-600'
+                      }`}>
+                        Set Password
+                      </h4>
+                      <p className={`text-xs ${
+                        !hasPassword
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : 'text-gray-400 dark:text-gray-600'
+                      }`}>
+                        Create new password
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Change Password Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasPassword) {
+                      setShowPasswordForm(true);
+                      setPasswordError('');
+                      setPasswordSuccess('');
+                    }
+                  }}
+                  disabled={!hasPassword}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    hasPassword
+                      ? 'border-purple-500 bg-purple-500/5 dark:bg-purple-500/10 hover:bg-purple-500/10 dark:hover:bg-purple-500/20 cursor-pointer'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      hasPassword
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-300 dark:bg-gray-700 text-gray-500'
+                    }`}>
+                      <Key className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <h4 className={`font-semibold ${
+                        hasPassword
+                          ? 'text-gray-900 dark:text-white'
+                          : 'text-gray-500 dark:text-gray-600'
+                      }`}>
+                        Change Password
+                      </h4>
+                      <p className={`text-xs ${
+                        hasPassword
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : 'text-gray-400 dark:text-gray-600'
+                      }`}>
+                        Update existing password
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
               {/* Info message for Google users without password */}
-              {isGoogleUser && !hasPassword && (
+              {isGoogleUser && !hasPassword && !showPasswordForm && (
                 <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800">
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        Google Account - Password Required
+                        Google Account - Password Optional
                       </p>
                       <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
                         You signed in with Google. Set a password to enable email/password login as an alternative to Google Sign-In.
@@ -397,7 +856,10 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
-              <form onSubmit={handlePasswordChange} className="space-y-5">
+
+              {/* Password Form - Only shown when showPasswordForm is true */}
+              {showPasswordForm && (
+              <form onSubmit={handlePasswordChange} className="space-y-5 p-5 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700">
                 {/* Current Password - Only show if user has password */}
                 {hasPassword && (
                   <div className="space-y-2">
@@ -411,7 +873,7 @@ export default function SettingsPage() {
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         placeholder="Enter your current password"
-                        className="pr-10 h-11 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
+                        className="pr-10 h-11 dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
                         required={hasPassword}
                       />
                       <button
@@ -437,8 +899,8 @@ export default function SettingsPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       onFocus={() => setShowPasswordRequirements(true)}
-                      placeholder={hasPassword ? 'Enter new password' : 'Enter password (min. 8 characters)'}
-                      className="pr-10 h-11 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
+                      placeholder={hasPassword ? 'Enter new password' : 'Create a strong password'}
+                      className="pr-10 h-11 dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
                       required
                     />
                     <button
@@ -450,10 +912,9 @@ export default function SettingsPage() {
                       {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-
                   {/* Password Requirements */}
                   {showPasswordRequirements && newPassword.length > 0 && (
-                    <div className="mt-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2">
+                    <div className="mt-3 p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 space-y-2">
                       <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Password Requirements:
                       </p>
@@ -499,7 +960,7 @@ export default function SettingsPage() {
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
                       placeholder={hasPassword ? 'Re-enter new password' : 'Re-enter password'}
-                      className="pr-10 h-11 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
+                      className="pr-10 h-11 dark:bg-gray-900 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
                       required
                     />
                     <button
@@ -511,7 +972,6 @@ export default function SettingsPage() {
                       {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-
                   {/* Password Match Indicator */}
                   {confirmNewPassword.length > 0 && (
                     <div className="flex items-center gap-2 mt-2">
@@ -551,25 +1011,44 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  className="w-full h-12 bg-[#4169E1] hover:bg-[#3558CC] rounded-xl text-base font-semibold shadow-sm hover:shadow-md transition-all"
-                  disabled={isChangingPassword || !passwordValidation.allValid || !passwordsMatch}
-                >
-                  {isChangingPassword ? (
-                    <span className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      {hasPassword ? 'Changing Password...' : 'Setting Password...'}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Key className="h-5 w-5" />
-                      {hasPassword ? 'Change Password' : 'Set Password'}
-                    </span>
-                  )}
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                      setPasswordError('');
+                      setPasswordSuccess('');
+                      setShowPasswordRequirements(false);
+                    }}
+                    className="flex-1 h-12 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 h-12 bg-[#4169E1] hover:bg-[#3558CC] rounded-xl text-base font-semibold shadow-sm hover:shadow-md transition-all"
+                    disabled={isChangingPassword || !passwordValidation.allValid || !passwordsMatch}
+                  >
+                    {isChangingPassword ? (
+                      <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        {hasPassword ? 'Changing...' : 'Setting...'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Key className="h-5 w-5" />
+                        {hasPassword ? 'Change Password' : 'Set Password'}
+                      </span>
+                    )}
+                  </Button>
+                </div>
               </form>
+              )}
             </div>
           </div>
         </Card>
@@ -585,7 +1064,6 @@ export default function SettingsPage() {
               )}
               Appearance
             </h2>
-
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
@@ -610,7 +1088,6 @@ export default function SettingsPage() {
               <Bell className="h-5 w-5 text-[#4169E1]" />
               Notifications
             </h2>
-
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="flex items-center justify-between">
@@ -690,7 +1167,6 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">
               Danger Zone
             </h2>
-
             <div className="space-y-4">
               {/* Logout */}
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -767,6 +1243,119 @@ export default function SettingsPage() {
               className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white"
             >
               Yes, Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Restore Task Confirmation Dialog */}
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-green-600 dark:text-green-400" />
+              Restore Task
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to restore <span className="font-semibold text-gray-900 dark:text-gray-100">"{selectedTask?.title}"</span>?
+              <br /><br />
+              This will move the task back to your active task list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowRestoreDialog(false);
+                setSelectedTask(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRestoreTask}
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white"
+            >
+              Yes, Restore Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Permanent Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border-2 border-red-300 dark:border-red-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 dark:text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Permanent Delete Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to permanently delete <span className="font-semibold text-gray-900 dark:text-gray-100">"{selectedTask?.title}"</span>?
+              <br />
+              <span className="inline-block mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <span className="block text-sm text-red-700 dark:text-red-300 font-medium">
+                  ⚠️ This action CANNOT be undone!
+                </span>
+                <span className="block text-sm text-red-600 dark:text-red-400 mt-1">
+                  The task will be removed forever and cannot be recovered.
+                </span>
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setSelectedTask(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmPermanentlyDelete}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white"
+            >
+              Yes, Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear All Archive Confirmation Dialog */}
+      <AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border-2 border-red-300 dark:border-red-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 dark:text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Clear All Archived Tasks
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to permanently delete <span className="font-semibold text-gray-900 dark:text-gray-100">ALL {archivedTasks.length} archived {archivedTasks.length === 1 ? 'task' : 'tasks'}</span>?
+              <br />
+              <span className="inline-block mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <span className="block text-sm text-red-700 dark:text-red-300 font-medium">
+                  ⚠️ This action CANNOT be undone!
+                </span>
+                <span className="block text-sm text-red-600 dark:text-red-400 mt-1">
+                  All archived tasks will be removed forever and cannot be recovered.
+                </span>
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setShowClearAllDialog(false)}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClearAll}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white"
+            >
+              Yes, Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
