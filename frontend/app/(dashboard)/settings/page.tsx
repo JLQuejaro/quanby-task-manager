@@ -116,14 +116,28 @@ export default function SettingsPage() {
       try {
         // Check if user has password
         const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
         const response = await fetch(`${API_URL}/api/auth/has-password`, {
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
         });
         if (response.ok) {
           const data = await response.json();
+          console.log('Has password response:', data);
           setHasPassword(data.hasPassword);
+        } else {
+          console.error('Failed to check if user has password:', response.status, response.statusText);
+          try {
+            const errorData = await response.json();
+            console.error('Error details:', errorData);
+          } catch (e) {
+            console.error('Could not parse error response:', e);
+          }
         }
         // Load notification preferences - store per user
         const userEmail = user?.email;
@@ -360,6 +374,10 @@ export default function SettingsPage() {
       const token = localStorage.getItem('token');
       console.log('🔑 Step 7: Token:', token ? 'EXISTS' : 'MISSING');
 
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const endpoint = hasPassword
         ? `${API_URL}/api/auth/change-password`
         : `${API_URL}/api/auth/set-password`;
@@ -411,21 +429,27 @@ export default function SettingsPage() {
       const responseText = await response.text();
       console.log('📥 Step 13: Raw response text:', responseText);
 
-      let data;
-      try {
-        data = responseText ? JSON.parse(responseText) : {};
-        console.log('📥 Step 14: Parsed data:', data);
-      } catch (parseError) {
-        console.error('❌ Step 14: Failed to parse response:', parseError);
-        data = { message: 'Invalid server response' };
+      let data = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+          console.log('📥 Step 14: Parsed response data:', data);
+        } catch (parseError) {
+          console.error('❌ Step 14: Failed to parse response:', parseError);
+          data = { message: 'Invalid server response' };
+        }
+      } else {
+        console.log('📥 Step 14: Empty response body');
       }
 
       if (!response.ok) {
-        console.log('❌ Step 15: Response not OK, throwing error');
-        throw new Error(data.message || data.error || `Failed to ${hasPassword ? 'change' : 'set'} password`);
+        console.log('❌ Step 15: Response not OK, status:', response.status);
+        // For error responses, use the error data from the response
+        const errorData = typeof data === 'object' && data !== null ? data : { message: response.statusText };
+        throw errorData;
       }
 
-      console.log('✅ Step 15: Success!');
+      console.log('✅ Step 16: Success!');
 
       const successMessage = hasPassword
         ? 'Password changed successfully! 🎉'
@@ -457,14 +481,51 @@ export default function SettingsPage() {
         setShowPasswordForm(false);
       }, 2000);
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to change password';
-      console.error('❌ Final error:', errorMessage);
-      console.error('❌ Full error object:', err);
-      setPasswordError(errorMessage);
+      console.error('❌ Final error object:', err);
+      console.error('❌ Error type:', typeof err);
+      console.error('❌ Error keys:', Object.keys(err || {}));
+      
+      // Handle different types of errors
+      let backendError = 'An error occurred while changing your password';
+      
+      if (err && typeof err === 'object') {
+        // If it's an error response from our API
+        if (err.message) {
+          backendError = err.message;
+        } else if (err.error) {
+          backendError = err.error;
+        } else if (err.statusCode) {
+          // Handle standard API error response
+          backendError = err.message || `Error ${err.statusCode}: Request failed`;
+        }
+        // Rate limiting error with lockedUntil
+        else if (err.statusCode && err.lockedUntil) {
+          const lockedUntil = new Date(err.lockedUntil).toLocaleString();
+          backendError = `Rate limit exceeded. Please try again after ${lockedUntil}. ${err.message || ''}`.trim();
+        }
+        // If error is the complete response data
+        else if (Object.keys(err).length > 0) {
+          backendError = err.message || err.error || JSON.stringify(err);
+        } else if (JSON.stringify(err) === '{}') {
+          // If we get an empty object, provide a meaningful default error
+          backendError = 'Request failed: Server returned an incomplete response. The password change may have failed due to validation errors.';
+        }
+      } else if (typeof err === 'string') {
+        backendError = err;
+      } else if (err === undefined || err === null) {
+        backendError = 'Request failed: No response from server. Please check your connection and try again.';
+      }
+      
+      // Fallback to generic message if still empty
+      if (!backendError || backendError === 'An error occurred while changing your password' || JSON.stringify(err) === '{}') {
+        backendError = 'Failed to change password. Please try again or contact support if the problem persists.';
+      }
+      
+      setPasswordError(backendError);
       addNotification(
         'password_change_failed',
         'Password Change Failed ❌',
-        errorMessage,
+        backendError,
         undefined,
         { action: 'password_error' }
       );

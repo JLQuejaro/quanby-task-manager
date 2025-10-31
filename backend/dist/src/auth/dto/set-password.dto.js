@@ -16,15 +16,20 @@ class SetPasswordDto {
 }
 exports.SetPasswordDto = SetPasswordDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ minLength: 8 }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8),
+    (0, swagger_1.ApiProperty)({
+        minLength: 8,
+        description: 'Password (at least 8 characters with uppercase, lowercase, number, and special character)'
+    }),
+    (0, class_validator_1.IsString)({ message: 'Password must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Password is required' }),
+    (0, class_validator_1.MinLength)(8, { message: 'Password must be at least 8 characters long' }),
     __metadata("design:type", String)
 ], SetPasswordDto.prototype, "password", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ minLength: 8 }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8),
+    (0, swagger_1.ApiProperty)({ minLength: 8, description: 'Confirmation of password' }),
+    (0, class_validator_1.IsString)({ message: 'Password confirmation must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Password confirmation is required' }),
+    (0, class_validator_1.MinLength)(8, { message: 'Password confirmation must be at least 8 characters long' }),
     __metadata("design:type", String)
 ], SetPasswordDto.prototype, "passwordConfirm", void 0);
 //# sourceMappingURL=set-password.dto.js.map

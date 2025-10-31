@@ -16,21 +16,26 @@ class ChangePasswordDto {
 }
 exports.ChangePasswordDto = ChangePasswordDto;
 __decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ description: 'Current password for validation' }),
+    (0, class_validator_1.IsString)({ message: 'Current password must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Current password is required' }),
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "currentPassword", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ minLength: 8 }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8),
+    (0, swagger_1.ApiProperty)({
+        minLength: 8,
+        description: 'New password (at least 8 characters with uppercase, lowercase, number, and special character)'
+    }),
+    (0, class_validator_1.IsString)({ message: 'New password must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'New password is required' }),
+    (0, class_validator_1.MinLength)(8, { message: 'New password must be at least 8 characters long' }),
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "newPassword", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ minLength: 8 }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8),
+    (0, swagger_1.ApiProperty)({ minLength: 8, description: 'Confirmation of new password' }),
+    (0, class_validator_1.IsString)({ message: 'New password confirmation must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'New password confirmation is required' }),
+    (0, class_validator_1.MinLength)(8, { message: 'New password confirmation must be at least 8 characters long' }),
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "newPasswordConfirm", void 0);
 //# sourceMappingURL=change-password.dto.js.map
