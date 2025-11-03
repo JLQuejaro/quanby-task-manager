@@ -29,6 +29,9 @@ __decorate([
     (0, class_validator_1.IsString)({ message: 'New password must be a string' }),
     (0, class_validator_1.IsNotEmpty)({ message: 'New password is required' }),
     (0, class_validator_1.MinLength)(8, { message: 'New password must be at least 8 characters long' }),
+    (0, class_validator_1.Matches)(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])(?!.*\s).{8,}$/, {
+        message: 'New password must contain at least one uppercase letter, one lowercase letter, one number, one special character, and no spaces'
+    }),
     __metadata("design:type", String)
 ], ChangePasswordDto.prototype, "newPassword", void 0);
 __decorate([

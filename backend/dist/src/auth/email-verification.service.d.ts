@@ -22,6 +22,7 @@ export declare class EmailVerificationService {
     private getTokenExpiry;
     private createVerificationToken;
     private validateVerificationToken;
+    private checkIfTokenAlreadyUsed;
     private markEmailAsVerified;
     private markTokenAsUsed;
     private getUserData;

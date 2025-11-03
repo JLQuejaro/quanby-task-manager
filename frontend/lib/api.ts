@@ -1,16 +1,13 @@
 import axios from 'axios';
-import { LoginCredentials, RegisterCredentials, AuthResponse, Task } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Create axios instance with interceptor for auth token
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
-// Request interceptor to add token
+// Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -19,96 +16,142 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
 // Auth API
 export const authApi = {
-  register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    const { data } = await api.post('/api/auth/register', credentials);
-    return data;
+  register: async (email: string, password: string, name: string) => {
+    const response = await api.post('/auth/register', { email, password, name });
+    return response.data;
   },
 
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const { data } = await api.post('/api/auth/login', credentials);
-    return data;
+  login: async (email: string, password: string) => {
+    const response = await api.post('/auth/login', { email, password });
+    return response.data;
   },
 
-  forgotPassword: async (email: string): Promise<{ message: string }> => {
-    const { data } = await api.post('/api/auth/forgot-password', { email });
-    return data;
+  googleCallback: async (idToken: string) => {
+    const response = await api.post('/auth/google/callback', { idToken });
+    return response.data;
   },
 
-  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
-    const { data } = await api.post('/api/auth/reset-password', { token, newPassword });
-    return data;
+  hasPassword: async () => {
+    const response = await api.get('/auth/has-password');
+    return response.data;
+  },
+
+  // FIXED: Match backend DTO field names
+  setPassword: async (password: string, passwordConfirm: string) => {
+    console.log('🔐 Frontend API calling setPassword:', {
+      passwordLength: password.length,
+      passwordConfirmLength: passwordConfirm.length,
+    });
+    
+    const response = await api.post('/auth/set-password', {
+      password,
+      passwordConfirm,
+    });
+    return response.data;
+  },
+
+  // FIXED: Match backend DTO field names
+  changePassword: async (
+    currentPassword: string,
+    newPassword: string,
+    newPasswordConfirm: string
+  ) => {
+    console.log('🔐 Frontend API calling changePassword:', {
+      currentPasswordLength: currentPassword.length,
+      newPasswordLength: newPassword.length,
+      newPasswordConfirmLength: newPasswordConfirm.length,
+    });
+
+    const response = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+      newPasswordConfirm,
+    });
+    return response.data;
+  },
+
+  verifyEmail: async (token: string) => {
+    const response = await api.post('/auth/verify-email', { token });
+    return response.data;
+  },
+
+  resendVerification: async () => {
+    const response = await api.post('/auth/resend-verification');
+    return response.data;
+  },
+
+  getProfile: async () => {
+    const response = await api.get('/auth/profile');
+    return response.data;
+  },
+
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    const response = await api.post('/auth/reset-password', { token, newPassword });
+    return response.data;
   },
 };
 
 // Tasks API
 export const tasksApi = {
-  getAll: async (): Promise<Task[]> => {
-    const { data } = await api.get('/api/tasks');
-    return data;
+  getAll: async () => {
+    const response = await api.get('/tasks');
+    return response.data;
   },
 
-  getOne: async (id: number): Promise<Task> => {
-    const { data } = await api.get(`/api/tasks/${id}`);
-    return data;
+  getById: async (id: number) => {
+    const response = await api.get(`/tasks/${id}`);
+    return response.data;
   },
 
-  create: async (task: Partial<Task>): Promise<Task> => {
-    const { data } = await api.post('/api/tasks', task);
-    return data;
+  create: async (taskData: any) => {
+    const response = await api.post('/tasks', taskData);
+    return response.data;
   },
 
-  update: async (id: number, task: Partial<Task>): Promise<Task> => {
-    const { data } = await api.patch(`/api/tasks/${id}`, task);
-    return data;
+  update: async (id: number, taskData: any) => {
+    const response = await api.put(`/tasks/${id}`, taskData);
+    return response.data;
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/tasks/${id}`);
+  delete: async (id: number) => {
+    const response = await api.delete(`/tasks/${id}`);
+    return response.data;
   },
 
-  toggleComplete: async (id: number, completed: boolean): Promise<Task> => {
-    const { data } = await api.patch(`/api/tasks/${id}`, { completed });
-    return data;
+  toggleComplete: async (id: number) => {
+    const response = await api.patch(`/tasks/${id}/toggle`);
+    return response.data;
   },
 };
 
 // Archive API
 export const archiveApi = {
   getArchived: async () => {
-    const { data } = await api.get('/api/tasks/archived/all');
-    return data;
+    const response = await api.get('/tasks/archived');
+    return response.data;
   },
 
   restore: async (id: number) => {
-    const { data } = await api.post(`/api/tasks/archived/${id}/restore`);
-    return data;
+    const response = await api.post(`/tasks/archived/${id}/restore`);
+    return response.data;
   },
 
   permanentlyDelete: async (id: number) => {
-    const { data } = await api.delete(`/api/tasks/archived/${id}`);
-    return data;
+    const response = await api.delete(`/tasks/archived/${id}`);
+    return response.data;
   },
 
   clearAll: async () => {
-    const { data } = await api.delete('/api/tasks/archived/clear-all/all');
-    return data;
+    const response = await api.delete('/tasks/archived');
+    return response.data;
   },
 };
-
 
 export default api;

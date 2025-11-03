@@ -189,6 +189,7 @@ let AuthService = class AuthService {
                     name: googleUser.name,
                     password: randomPassword,
                     authProvider: 'google',
+                    emailVerified: true,
                 }).returning();
                 console.log('✅ New Google user created:', user.email);
             }
@@ -202,7 +203,8 @@ let AuthService = class AuthService {
                     id: user.id.toString(),
                     email: user.email,
                     name: user.name,
-                    authProvider: user.authProvider || 'google'
+                    authProvider: user.authProvider || 'google',
+                    emailVerified: user.emailVerified || true,
                 },
             };
         }
@@ -229,16 +231,24 @@ let AuthService = class AuthService {
         }).from(schema_1.users);
         return allUsers;
     }
-    async setPassword(userId, newPassword, ipAddress, userAgent) {
-        this.validatePasswordStrength(newPassword);
+    async setPassword(userId, newPassword, confirmPassword, ipAddress, userAgent) {
+        console.log('🔐 setPassword called with:', {
+            userId,
+            newPasswordLength: newPassword?.length || 0,
+            confirmPasswordLength: confirmPassword?.length || 0,
+            ipAddress,
+        });
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
         if (!user) {
             throw new common_1.UnauthorizedException('User not found');
         }
-        const isVerified = await this.emailVerificationService.isEmailVerified(userId);
-        if (!isVerified) {
-            throw new common_1.UnauthorizedException('Please verify your email before setting a password');
+        if (user.password && user.password.length > 0) {
+            throw new common_1.BadRequestException('Password already set. Use change password instead.');
         }
+        if (newPassword !== confirmPassword) {
+            throw new common_1.BadRequestException('Passwords do not match');
+        }
+        this.validatePasswordStrength(newPassword);
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await db_1.db.update(schema_1.users)
             .set({
@@ -266,12 +276,15 @@ let AuthService = class AuthService {
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
         return { hasPassword: user && user.password !== null && user.password.length > 0 };
     }
-    async changePassword(userId, currentPassword, newPassword, newPasswordConfirm, ipAddress, userAgent) {
+    async changePassword(userId, currentPassword, newPassword, confirmPassword, ipAddress, userAgent) {
+        console.log('🔐 changePassword called with:', {
+            userId,
+            currentPasswordLength: currentPassword?.length || 0,
+            newPasswordLength: newPassword?.length || 0,
+            confirmPasswordLength: confirmPassword?.length || 0,
+            ipAddress,
+        });
         await this.rateLimitService.checkRateLimit(`user_${userId}`, 'password_change');
-        if (newPassword !== newPasswordConfirm) {
-            throw new common_1.BadRequestException('New passwords do not match');
-        }
-        this.validatePasswordStrength(newPassword);
         const [user] = await db_1.db.select()
             .from(schema_1.users)
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
@@ -294,6 +307,10 @@ let AuthService = class AuthService {
             });
             throw new common_1.UnauthorizedException('Current password is incorrect');
         }
+        if (newPassword !== confirmPassword) {
+            throw new common_1.BadRequestException('New passwords do not match');
+        }
+        this.validatePasswordStrength(newPassword);
         const isSameAsCurrentPassword = await bcrypt.compare(newPassword, user.password);
         if (isSameAsCurrentPassword) {
             await this.securityLogService.log({
@@ -334,27 +351,26 @@ let AuthService = class AuthService {
         if (!password || typeof password !== 'string') {
             throw new common_1.BadRequestException('Password is required');
         }
-        if (password.length < 8) {
+        const trimmedPassword = password.trim();
+        if (trimmedPassword.length === 0) {
+            throw new common_1.BadRequestException('Password cannot be empty');
+        }
+        if (trimmedPassword.length < 8) {
             throw new common_1.BadRequestException('Password must be at least 8 characters long');
         }
-        const hasUpperCase = /[A-Z]/.test(password);
-        if (!hasUpperCase) {
+        if (!/[A-Z]/.test(password)) {
             throw new common_1.BadRequestException('Password must contain at least one uppercase letter (A-Z)');
         }
-        const hasLowerCase = /[a-z]/.test(password);
-        if (!hasLowerCase) {
+        if (!/[a-z]/.test(password)) {
             throw new common_1.BadRequestException('Password must contain at least one lowercase letter (a-z)');
         }
-        const hasNumber = /[0-9]/.test(password);
-        if (!hasNumber) {
+        if (!/[0-9]/.test(password)) {
             throw new common_1.BadRequestException('Password must contain at least one number (0-9)');
         }
-        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-        if (!hasSpecialChar) {
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
             throw new common_1.BadRequestException('Password must contain at least one special character (!@#$%^&*)');
         }
-        const hasSpaces = /\s/.test(password);
-        if (hasSpaces) {
+        if (/\s/.test(password)) {
             throw new common_1.BadRequestException('Password must not contain spaces');
         }
     }

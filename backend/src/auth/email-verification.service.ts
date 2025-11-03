@@ -108,6 +108,7 @@ export class EmailVerificationService {
 
   /**
    * Verify email with token and generate JWT token for auto-login
+   * CRITICAL FIX: Handle already-verified users gracefully
    */
   async verifyEmailAndGenerateToken(token: string): Promise<{
     success: boolean;
@@ -131,7 +132,35 @@ export class EmailVerificationService {
       const tokenData = await this.validateVerificationToken(hashedToken);
 
       if (!tokenData) {
-        console.error('❌ Token validation failed - not found or expired');
+        console.error('❌ Token validation failed - checking if already verified...');
+        
+        // CRITICAL FIX: Check if token was already used successfully
+        const usedTokenCheck = await this.checkIfTokenAlreadyUsed(hashedToken);
+        
+        if (usedTokenCheck && usedTokenCheck.emailVerified) {
+          console.log('✅ Token already used but user is verified - returning success');
+          
+          // Get current user data
+          const userData = await this.getUserData(usedTokenCheck.userId);
+          
+          // Generate new JWT token
+          const payload = { sub: userData.id, email: userData.email };
+          const accessToken = await this.jwtService.signAsync(payload);
+          
+          return {
+            success: true,
+            email: userData.email,
+            access_token: accessToken,
+            user: {
+              id: userData.id.toString(),
+              email: userData.email,
+              name: userData.name,
+              emailVerified: true,
+              authProvider: userData.auth_provider || 'email',
+            },
+          };
+        }
+        
         throw new BadRequestException('Invalid or expired verification token');
       }
 
@@ -369,6 +398,39 @@ export class EmailVerificationService {
       console.error('❌ Error validating token:', error);
       console.error('❌ Error details:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * CRITICAL FIX: Check if token was already used and user is verified
+   */
+  private async checkIfTokenAlreadyUsed(hashedToken: string): Promise<{
+    userId: number;
+    emailVerified: boolean;
+  } | null> {
+    try {
+      const result = await this.pool.query(
+        `SELECT 
+          evt.user_id,
+          u.email_verified
+         FROM email_verification_tokens evt
+         JOIN users u ON u.id = evt.user_id
+         WHERE evt.token = $1
+         AND evt.used_at IS NOT NULL`,
+        [hashedToken]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      return {
+        userId: result.rows[0].user_id,
+        emailVerified: result.rows[0].email_verified,
+      };
+    } catch (error) {
+      console.error('❌ Error checking if token already used:', error);
+      return null;
     }
   }
 

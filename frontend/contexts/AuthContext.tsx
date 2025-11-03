@@ -29,8 +29,8 @@ const PUBLIC_PATHS = [
   '/auth/callback',
   '/callback',
   '/set-password',
-  '/verify-email',  // Added this - verification page should be public
-  '/verify-email-notice'  // Added this too
+  '/verify-email',
+  '/verify-email-notice'
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -123,7 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: { email: string; password: string }) => {
     try {
-      const response = await authApi.login(credentials);
+      // FIXED: Destructure email and password from credentials object
+      const { email, password } = credentials;
+      
+      // FIXED: Pass email and password as separate arguments
+      const response = await authApi.login(email, password);
       localStorage.setItem('token', response.access_token);
       
       // Check password status after login

@@ -38,6 +38,7 @@ export declare class AuthService {
             email: string;
             name: string;
             authProvider: string;
+            emailVerified: true;
         };
     }>;
     validateUser(userId: number): Promise<{
@@ -60,13 +61,13 @@ export declare class AuthService {
         emailVerified: boolean;
         createdAt: Date;
     }[]>;
-    setPassword(userId: number, newPassword: string, ipAddress?: string, userAgent?: string): Promise<{
+    setPassword(userId: number, newPassword: string, confirmPassword: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
     hasPassword(userId: number): Promise<{
         hasPassword: boolean;
     }>;
-    changePassword(userId: number, currentPassword: string, newPassword: string, newPasswordConfirm: string, ipAddress?: string, userAgent?: string): Promise<{
+    changePassword(userId: number, currentPassword: string, newPassword: string, confirmPassword: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
     private validatePasswordStrength;

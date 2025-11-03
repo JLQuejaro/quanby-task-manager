@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckSquare, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,11 +16,30 @@ function VerifyEmailContent() {
   const [status, setStatus] = useState<'verifying' | 'success' | 'error' | 'already_verified'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  
+  // CRITICAL FIX: Prevent multiple simultaneous verification attempts
+  const verificationAttemptedRef = useRef(false);
+  const isVerifyingRef = useRef(false);
 
   useEffect(() => {
+    // CRITICAL FIX: Only run verification once
+    if (verificationAttemptedRef.current) {
+      console.log('⚠️ Verification already attempted, skipping duplicate call');
+      return;
+    }
+
     const verifyEmail = async () => {
+      // CRITICAL FIX: Prevent concurrent requests
+      if (isVerifyingRef.current) {
+        console.log('⚠️ Verification already in progress, skipping');
+        return;
+      }
+
       try {
-        // CRITICAL FIX: Check if user is already logged in and verified
+        isVerifyingRef.current = true;
+        verificationAttemptedRef.current = true;
+
+        // Check if user is already logged in and verified
         if (user?.emailVerified) {
           console.log('✅ User already verified, redirecting to dashboard');
           setStatus('already_verified');
@@ -151,6 +170,8 @@ function VerifyEmailContent() {
           undefined,
           { action: 'email_verification_failed' }
         );
+      } finally {
+        isVerifyingRef.current = false;
       }
     };
 

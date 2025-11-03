@@ -1,5 +1,5 @@
 'use client';
-import { archiveApi } from '@/lib/api';
+import { authApi, archiveApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
@@ -44,8 +44,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Password validation function
 const validatePassword = (password: string) => {
@@ -114,31 +112,10 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        // Check if user has password
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('No token found');
-          return;
-        }
-        const response = await fetch(`${API_URL}/api/auth/has-password`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Has password response:', data);
-          setHasPassword(data.hasPassword);
-        } else {
-          console.error('Failed to check if user has password:', response.status, response.statusText);
-          try {
-            const errorData = await response.json();
-            console.error('Error details:', errorData);
-          } catch (e) {
-            console.error('Could not parse error response:', e);
-          }
-        }
+        // Check if user has password using the API
+        const passwordStatus = await authApi.hasPassword();
+        setHasPassword(passwordStatus.hasPassword);
+        
         // Load notification preferences - store per user
         const userEmail = user?.email;
         if (userEmail) {
@@ -152,10 +129,18 @@ export default function SettingsPage() {
             setDeadlineAlerts(prefs.deadlineAlerts ?? true);
           }
         }
+        
         // Load archived tasks
         loadArchivedTasks();
       } catch (error) {
         console.error('Failed to load user data:', error);
+        addNotification(
+          'error',
+          'Load Failed',
+          'Failed to load user settings.',
+          undefined,
+          { action: 'load_settings_failed' }
+        );
       } finally {
         setIsLoading(false);
       }
@@ -298,16 +283,8 @@ export default function SettingsPage() {
     setPasswordError('');
     setPasswordSuccess('');
 
-    console.log('🎯 Step 1: Form submitted');
-    console.log('🎯 Step 2: Current values:', {
-      newPassword: newPassword ? `${newPassword.length} chars` : 'EMPTY',
-      confirmNewPassword: confirmNewPassword ? `${confirmNewPassword.length} chars` : 'EMPTY',
-      currentPassword: currentPassword ? `${currentPassword.length} chars` : 'EMPTY',
-    });
-
     // Check that passwords are actually filled in
     if (!newPassword.trim() || !confirmNewPassword.trim()) {
-      console.log('❌ Step 3: Validation failed - empty passwords');
       setPasswordError('Password is required');
       addNotification(
         'password_change_failed',
@@ -319,11 +296,8 @@ export default function SettingsPage() {
       return;
     }
 
-    console.log('✅ Step 3: Passwords not empty');
-
     // Validation - Check all password requirements
     if (!passwordValidation.allValid) {
-      console.log('❌ Step 4: Validation failed - requirements not met');
       setPasswordError('Password does not meet all requirements');
       setShowPasswordRequirements(true);
       addNotification(
@@ -336,10 +310,7 @@ export default function SettingsPage() {
       return;
     }
 
-    console.log('✅ Step 4: Password requirements met');
-
     if (newPassword !== confirmNewPassword) {
-      console.log('❌ Step 5: Passwords do not match');
       setPasswordError('New passwords do not match');
       addNotification(
         'password_change_failed',
@@ -351,10 +322,7 @@ export default function SettingsPage() {
       return;
     }
 
-    console.log('✅ Step 5: Passwords match');
-
     if (hasPassword && !currentPassword.trim()) {
-      console.log('❌ Step 6: Current password required but missing');
       setPasswordError('Please enter your current password');
       addNotification(
         'password_change_failed',
@@ -366,90 +334,23 @@ export default function SettingsPage() {
       return;
     }
 
-    console.log('✅ Step 6: All validations passed');
-
     setIsChangingPassword(true);
 
     try {
-      const token = localStorage.getItem('token');
-      console.log('🔑 Step 7: Token:', token ? 'EXISTS' : 'MISSING');
-
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const endpoint = hasPassword
-        ? `${API_URL}/api/auth/change-password`
-        : `${API_URL}/api/auth/set-password`;
-
-      console.log('🎯 Step 8: Endpoint:', endpoint);
-      console.log('🎯 Step 8: hasPassword:', hasPassword);
-
-      // Construct the body with proper field names
-      const requestBody = hasPassword
-        ? {
-            currentPassword: currentPassword.trim(),
-            newPassword: newPassword.trim(),
-            newPasswordConfirm: confirmNewPassword.trim()
-          }
-        : {
-            password: newPassword.trim(),
-            passwordConfirm: confirmNewPassword.trim()
-          };
-
-      console.log('📦 Step 9: Request body constructed:', {
-        keys: Object.keys(requestBody),
-        values: Object.entries(requestBody).map(([key, val]) => 
-          `${key}: ${val.length} chars`
-        )
-      });
-
-      const bodyString = JSON.stringify(requestBody);
-      console.log('📦 Step 10: Stringified body:', bodyString);
-      console.log('📦 Step 10: Body length:', bodyString.length);
-
-      console.log('🌐 Step 11: About to fetch...');
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: bodyString,
-      });
-
-      console.log('📥 Step 12: Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        contentType: response.headers.get('content-type'),
-      });
-
-      const responseText = await response.text();
-      console.log('📥 Step 13: Raw response text:', responseText);
-
-      let data = {};
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-          console.log('📥 Step 14: Parsed response data:', data);
-        } catch (parseError) {
-          console.error('❌ Step 14: Failed to parse response:', parseError);
-          data = { message: 'Invalid server response' };
-        }
+      if (hasPassword) {
+        // Change existing password
+        await authApi.changePassword(
+          currentPassword.trim(),
+          newPassword.trim(),
+          confirmNewPassword.trim()
+        );
       } else {
-        console.log('📥 Step 14: Empty response body');
+        // Set new password
+        await authApi.setPassword(
+          newPassword.trim(),
+          confirmNewPassword.trim()
+        );
       }
-
-      if (!response.ok) {
-        console.log('❌ Step 15: Response not OK, status:', response.status);
-        // For error responses, use the error data from the response
-        const errorData = typeof data === 'object' && data !== null ? data : { message: response.statusText };
-        throw errorData;
-      }
-
-      console.log('✅ Step 16: Success!');
 
       const successMessage = hasPassword
         ? 'Password changed successfully! 🎉'
@@ -473,6 +374,11 @@ export default function SettingsPage() {
       // Update hasPassword state if it was a first-time set
       if (!hasPassword) {
         setHasPassword(true);
+        // Update user in context
+        if (user) {
+          const updatedUser = { ...user, hasPassword: true };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
       }
 
       // Close form after 2 seconds
@@ -481,51 +387,21 @@ export default function SettingsPage() {
         setShowPasswordForm(false);
       }, 2000);
     } catch (err: any) {
-      console.error('❌ Final error object:', err);
-      console.error('❌ Error type:', typeof err);
-      console.error('❌ Error keys:', Object.keys(err || {}));
+      console.error('❌ Password change error:', err);
       
-      // Handle different types of errors
-      let backendError = 'An error occurred while changing your password';
+      let errorMessage = 'An error occurred while changing your password';
       
-      if (err && typeof err === 'object') {
-        // If it's an error response from our API
-        if (err.message) {
-          backendError = err.message;
-        } else if (err.error) {
-          backendError = err.error;
-        } else if (err.statusCode) {
-          // Handle standard API error response
-          backendError = err.message || `Error ${err.statusCode}: Request failed`;
-        }
-        // Rate limiting error with lockedUntil
-        else if (err.statusCode && err.lockedUntil) {
-          const lockedUntil = new Date(err.lockedUntil).toLocaleString();
-          backendError = `Rate limit exceeded. Please try again after ${lockedUntil}. ${err.message || ''}`.trim();
-        }
-        // If error is the complete response data
-        else if (Object.keys(err).length > 0) {
-          backendError = err.message || err.error || JSON.stringify(err);
-        } else if (JSON.stringify(err) === '{}') {
-          // If we get an empty object, provide a meaningful default error
-          backendError = 'Request failed: Server returned an incomplete response. The password change may have failed due to validation errors.';
-        }
-      } else if (typeof err === 'string') {
-        backendError = err;
-      } else if (err === undefined || err === null) {
-        backendError = 'Request failed: No response from server. Please check your connection and try again.';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
-      // Fallback to generic message if still empty
-      if (!backendError || backendError === 'An error occurred while changing your password' || JSON.stringify(err) === '{}') {
-        backendError = 'Failed to change password. Please try again or contact support if the problem persists.';
-      }
-      
-      setPasswordError(backendError);
+      setPasswordError(errorMessage);
       addNotification(
         'password_change_failed',
         'Password Change Failed ❌',
-        backendError,
+        errorMessage,
         undefined,
         { action: 'password_error' }
       );
@@ -888,7 +764,7 @@ export default function SettingsPage() {
                           : 'text-gray-500 dark:text-gray-600'
                       }`}>
                         Change Password
-                      </h4>
+                        </h4>
                       <p className={`text-xs ${
                         hasPassword
                           ? 'text-gray-600 dark:text-gray-400'

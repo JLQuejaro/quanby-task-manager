@@ -183,6 +183,7 @@ export class AuthService {
           name: googleUser.name,
           password: randomPassword,
           authProvider: 'google',
+          emailVerified: true,
         }).returning();
         
         console.log('✅ New Google user created:', user.email);
@@ -197,7 +198,8 @@ export class AuthService {
           id: user.id.toString(), 
           email: user.email, 
           name: user.name,
-          authProvider: user.authProvider || 'google'
+          authProvider: user.authProvider || 'google',
+          emailVerified: user.emailVerified || true,
         },
       };
     } catch (error) {
@@ -229,23 +231,38 @@ export class AuthService {
   async setPassword(
     userId: number, 
     newPassword: string,
+    confirmPassword: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
-    // FIXED: Validate password strength BEFORE checking user
-    this.validatePasswordStrength(newPassword);
+    console.log('🔐 setPassword called with:', {
+      userId,
+      newPasswordLength: newPassword?.length || 0,
+      confirmPasswordLength: confirmPassword?.length || 0,
+      ipAddress,
+    });
 
+    // Get user first
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    const isVerified = await this.emailVerificationService.isEmailVerified(userId);
-    if (!isVerified) {
-      throw new UnauthorizedException('Please verify your email before setting a password');
+    // Check if user already has a password
+    if (user.password && user.password.length > 0) {
+      throw new BadRequestException('Password already set. Use change password instead.');
     }
 
+    // Validate passwords match FIRST
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    // Then validate password strength
+    this.validatePasswordStrength(newPassword);
+
+    // Hash and save password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     
     await db.update(users)
@@ -284,19 +301,19 @@ export class AuthService {
     userId: number, 
     currentPassword: string, 
     newPassword: string,
-    newPasswordConfirm: string,
+    confirmPassword: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
+    console.log('🔐 changePassword called with:', {
+      userId,
+      currentPasswordLength: currentPassword?.length || 0,
+      newPasswordLength: newPassword?.length || 0,
+      confirmPasswordLength: confirmPassword?.length || 0,
+      ipAddress,
+    });
+
     await this.rateLimitService.checkRateLimit(`user_${userId}`, 'password_change');
-
-    // Validate that new passwords match
-    if (newPassword !== newPasswordConfirm) {
-      throw new BadRequestException('New passwords do not match');
-    }
-
-    // FIXED: Validate password strength with correct parameter
-    this.validatePasswordStrength(newPassword);
 
     // Get user from database
     const [user] = await db.select()
@@ -311,7 +328,7 @@ export class AuthService {
       throw new UnauthorizedException('No password set. Use set password instead.');
     }
 
-    // Verify current password is correct
+    // Verify current password is correct FIRST
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
     
     if (!isCurrentPasswordValid) {
@@ -326,6 +343,14 @@ export class AuthService {
       });
       throw new UnauthorizedException('Current password is incorrect');
     }
+
+    // Validate that new passwords match
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('New passwords do not match');
+    }
+
+    // Validate password strength
+    this.validatePasswordStrength(newPassword);
 
     // Check if new password is same as current password
     const isSameAsCurrentPassword = await bcrypt.compare(newPassword, user.password);
@@ -376,45 +401,46 @@ export class AuthService {
     };
   }
 
-  // FIXED: Added proper parameter validation and enhanced password requirements
   private validatePasswordStrength(password: string): void {
     // Check if password exists and is a string
     if (!password || typeof password !== 'string') {
       throw new BadRequestException('Password is required');
     }
 
+    // Trim password to check actual content
+    const trimmedPassword = password.trim();
+    
+    if (trimmedPassword.length === 0) {
+      throw new BadRequestException('Password cannot be empty');
+    }
+
     // Check minimum length
-    if (password.length < 8) {
+    if (trimmedPassword.length < 8) {
       throw new BadRequestException('Password must be at least 8 characters long');
     }
 
     // Check for uppercase letter
-    const hasUpperCase = /[A-Z]/.test(password);
-    if (!hasUpperCase) {
+    if (!/[A-Z]/.test(password)) {
       throw new BadRequestException('Password must contain at least one uppercase letter (A-Z)');
     }
 
     // Check for lowercase letter
-    const hasLowerCase = /[a-z]/.test(password);
-    if (!hasLowerCase) {
+    if (!/[a-z]/.test(password)) {
       throw new BadRequestException('Password must contain at least one lowercase letter (a-z)');
     }
 
     // Check for number
-    const hasNumber = /[0-9]/.test(password);
-    if (!hasNumber) {
+    if (!/[0-9]/.test(password)) {
       throw new BadRequestException('Password must contain at least one number (0-9)');
     }
 
     // Check for special character
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-    if (!hasSpecialChar) {
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       throw new BadRequestException('Password must contain at least one special character (!@#$%^&*)');
     }
 
     // Check for spaces
-    const hasSpaces = /\s/.test(password);
-    if (hasSpaces) {
+    if (/\s/.test(password)) {
       throw new BadRequestException('Password must not contain spaces');
     }
   }
