@@ -60,7 +60,7 @@ function CallbackContent() {
         localStorage.setItem('access_token', token);
 
         // Fetch user profile from backend
-        const profileResponse = await fetch(`${API_URL}/api/auth/profile`, {
+        const profileResponse = await fetch(`${API_URL}/auth/profile`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -83,10 +83,10 @@ function CallbackContent() {
         }
 
         console.log('✅ User profile fetched:', userData.email);
-        console.log('📧 Email verified status:', userData.isEmailVerified);
+        console.log('📧 Email verified status:', userData.emailVerified);
 
-        // Check if email is verified
-        if (!userData.isEmailVerified) {
+        // FIXED: Check emailVerified (not isEmailVerified)
+        if (!userData.emailVerified) {
           console.log('⚠️ Email not verified, redirecting to verification notice');
           
           // Store user data even if not verified
@@ -102,7 +102,7 @@ function CallbackContent() {
 
         // Check if user has password set
         console.log('🔑 Checking password status...');
-        const passwordCheckResponse = await fetch(`${API_URL}/api/auth/has-password`, {
+        const passwordCheckResponse = await fetch(`${API_URL}/auth/has-password`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',

@@ -44,7 +44,6 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'Return the task' })
   @ApiResponse({ status: 404, description: 'Task not found' })
   findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-    // FIX: Validate that id is a valid number
     if (isNaN(id)) {
       throw new HttpException('Invalid task ID', HttpStatus.BAD_REQUEST);
     }
@@ -60,11 +59,21 @@ export class TasksController {
     @Body() updateTaskDto: UpdateTaskDto,
     @Req() req: any
   ) {
-    // FIX: Validate that id is a valid number
     if (isNaN(id)) {
       throw new HttpException('Invalid task ID', HttpStatus.BAD_REQUEST);
     }
     return this.tasksService.update(id, updateTaskDto, req.user.id);
+  }
+
+  @Patch(':id/toggle')
+  @ApiOperation({ summary: 'Toggle task completion status' })
+  @ApiResponse({ status: 200, description: 'Task toggled successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  toggleComplete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    if (isNaN(id)) {
+      throw new HttpException('Invalid task ID', HttpStatus.BAD_REQUEST);
+    }
+    return this.tasksService.toggleComplete(id, req.user.id);
   }
 
   @Delete(':id')
@@ -72,15 +81,13 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'Task archived successfully' })
   @ApiResponse({ status: 404, description: 'Task not found' })
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
-    // FIX: Validate that id is a valid number
     if (isNaN(id)) {
       throw new HttpException('Invalid task ID', HttpStatus.BAD_REQUEST);
     }
-    // Archive instead of permanently delete
     return this.tasksService.archiveTask(id, req.user.id);
   }
 
-  // ========== NEW ARCHIVE ENDPOINTS ==========
+  // ========== ARCHIVE ENDPOINTS ==========
 
   @Get('archived/all')
   @ApiOperation({ summary: 'Get all archived tasks' })

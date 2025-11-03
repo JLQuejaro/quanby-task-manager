@@ -40,6 +40,12 @@ let TasksController = class TasksController {
         }
         return this.tasksService.update(id, updateTaskDto, req.user.id);
     }
+    toggleComplete(id, req) {
+        if (isNaN(id)) {
+            throw new common_1.HttpException('Invalid task ID', common_1.HttpStatus.BAD_REQUEST);
+        }
+        return this.tasksService.toggleComplete(id, req.user.id);
+    }
     remove(id, req) {
         if (isNaN(id)) {
             throw new common_1.HttpException('Invalid task ID', common_1.HttpStatus.BAD_REQUEST);
@@ -109,6 +115,17 @@ __decorate([
     __metadata("design:paramtypes", [Number, create_task_dto_1.UpdateTaskDto, Object]),
     __metadata("design:returntype", void 0)
 ], TasksController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/toggle'),
+    (0, swagger_1.ApiOperation)({ summary: 'Toggle task completion status' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Task toggled successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Task not found' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], TasksController.prototype, "toggleComplete", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Archive a specific task by ID (soft delete)' }),

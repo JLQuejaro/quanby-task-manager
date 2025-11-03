@@ -38,7 +38,7 @@ export declare class AuthService {
             email: string;
             name: string;
             authProvider: string;
-            emailVerified: true;
+            emailVerified: boolean;
         };
     }>;
     validateUser(userId: number): Promise<{

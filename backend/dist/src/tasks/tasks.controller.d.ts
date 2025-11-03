@@ -47,6 +47,17 @@ export declare class TasksController {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    toggleComplete(id: number, req: any): Promise<{
+        id: number;
+        title: string;
+        description: string;
+        priority: string;
+        deadline: Date;
+        completed: boolean;
+        userId: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     remove(id: number, req: any): Promise<{
         message: string;
         expiresAt: Date;

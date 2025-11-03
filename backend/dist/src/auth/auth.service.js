@@ -189,9 +189,11 @@ let AuthService = class AuthService {
                     name: googleUser.name,
                     password: randomPassword,
                     authProvider: 'google',
-                    emailVerified: true,
+                    emailVerified: false,
                 }).returning();
+                await this.emailVerificationService.sendVerificationEmail(user.id, user.email, user.name);
                 console.log('✅ New Google user created:', user.email);
+                console.log('📧 Verification email sent to:', user.email);
             }
             else {
                 console.log('✅ Existing Google user logged in:', user.email);
@@ -204,7 +206,7 @@ let AuthService = class AuthService {
                     email: user.email,
                     name: user.name,
                     authProvider: user.authProvider || 'google',
-                    emailVerified: user.emailVerified || true,
+                    emailVerified: user.emailVerified || false,
                 },
             };
         }

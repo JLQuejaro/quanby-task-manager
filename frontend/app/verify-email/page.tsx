@@ -75,9 +75,9 @@ function VerifyEmailContent() {
         }
 
         console.log('🔍 Verifying email with token:', token.substring(0, 20) + '...');
-        console.log('🌐 API URL:', `${API_URL}/api/auth/verify-email?token=${token.substring(0, 20)}...`);
+        console.log('🌐 API URL:', `${API_URL}/auth/verify-email?token=${token.substring(0, 20)}...`);
 
-        const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`, {
+        const response = await fetch(`${API_URL}/auth/verify-email?token=${token}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

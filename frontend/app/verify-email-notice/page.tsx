@@ -19,8 +19,8 @@ export default function VerifyEmailNoticePage() {
   useEffect(() => {
     // FIXED: Changed isEmailVerified to emailVerified
     if (user?.emailVerified) {
-      console.log('✅ Email already verified, redirecting to dashboard');
-      router.push('/dashboard');
+      console.log('✅ Email already verified, redirecting to set-password or dashboard');
+      router.push('/set-password');
     }
 
     // If no user is logged in, redirect to login
@@ -51,7 +51,7 @@ export default function VerifyEmailNoticePage() {
 
       console.log('📤 Resending verification email...');
 
-      const response = await fetch(`${apiUrl}/api/auth/resend-verification`, {
+      const response = await fetch(`${apiUrl}/auth/resend-verification`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -76,8 +76,8 @@ export default function VerifyEmailNoticePage() {
         }, 1000);
       } else {
         const data = await response.json();
-        console.error('❌ Failed to resend:', data.message);
-        setResendMessage(`❌ ${data.message || 'Failed to resend email.'}`);
+        console.warn('⚠️ Resend throttled:', data.message);
+        setResendMessage(`⚠️ ${data.message || 'Failed to resend email.'}`);
       }
     } catch (error) {
       console.error('❌ Resend verification error:', error);
@@ -212,7 +212,7 @@ export default function VerifyEmailNoticePage() {
             Didn't receive the email? Check your spam folder or click resend above.
           </p>
           <p className="text-center text-xs text-gray-500 dark:text-gray-500">
-            After verifying, please login again to access your account.
+            After verifying your email, you'll be redirected to set up your password.
           </p>
         </div>
       </div>

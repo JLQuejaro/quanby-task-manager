@@ -13,7 +13,9 @@ import {
   CheckSquare,
   AlertCircle,
   CheckCircle,
-  Info
+  Info,
+  Check,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -32,6 +34,16 @@ export default function SetPasswordPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Password validation states
+  const [passwordValidation, setPasswordValidation] = useState({
+    minLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+    noSpaces: true,
+  });
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -60,6 +72,22 @@ export default function SetPasswordPage() {
     checkStatus();
   }, [user, checkPasswordStatus, router]);
 
+  // Validate password in real-time
+  useEffect(() => {
+    setPasswordValidation({
+      minLength: newPassword.length >= 8,
+      hasUppercase: /[A-Z]/.test(newPassword),
+      hasLowercase: /[a-z]/.test(newPassword),
+      hasNumber: /\d/.test(newPassword),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword),
+      noSpaces: !/\s/.test(newPassword),
+    });
+  }, [newPassword]);
+
+  const isPasswordValid = () => {
+    return Object.values(passwordValidation).every(Boolean);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -72,8 +100,8 @@ export default function SetPasswordPage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!isPasswordValid()) {
+      setError('Please meet all password requirements');
       setIsSubmitting(false);
       return;
     }
@@ -91,13 +119,16 @@ export default function SetPasswordPage() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${API_URL}/api/auth/set-password`, {
+      const response = await fetch(`${API_URL}/auth/set-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ password: newPassword }),
+        body: JSON.stringify({ 
+          password: newPassword,
+          passwordConfirm: confirmPassword 
+        }),
       });
 
       const data = await response.json();
@@ -144,7 +175,7 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4 py-8">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3">
@@ -201,7 +232,7 @@ export default function SetPasswordPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter password (min. 6 characters)"
+                  placeholder="Enter password"
                   className="pl-10 pr-10 h-11 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 rounded-xl border-2 focus:border-[#4169E1] dark:focus:border-[#4169E1]"
                   required
                 />
@@ -214,9 +245,39 @@ export default function SetPasswordPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Must be at least 6 characters
-              </p>
+
+              {/* Password Requirements */}
+              {newPassword && (
+                <div className="mt-3 space-y-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Password must contain:</p>
+                  <div className="space-y-1.5">
+                    <PasswordRequirement 
+                      met={passwordValidation.minLength} 
+                      text="At least 8 characters" 
+                    />
+                    <PasswordRequirement 
+                      met={passwordValidation.hasUppercase} 
+                      text="One uppercase letter (A-Z)" 
+                    />
+                    <PasswordRequirement 
+                      met={passwordValidation.hasLowercase} 
+                      text="One lowercase letter (a-z)" 
+                    />
+                    <PasswordRequirement 
+                      met={passwordValidation.hasNumber} 
+                      text="One number (0-9)" 
+                    />
+                    <PasswordRequirement 
+                      met={passwordValidation.hasSpecialChar} 
+                      text="One special character (!@#$%^&*...)" 
+                    />
+                    <PasswordRequirement 
+                      met={passwordValidation.noSpaces} 
+                      text="No spaces" 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password Field */}
@@ -244,6 +305,18 @@ export default function SetPasswordPage() {
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <X className="h-3 w-3" />
+                  Passwords do not match
+                </p>
+              )}
+              {confirmPassword && newPassword === confirmPassword && (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Passwords match
+                </p>
+              )}
             </div>
 
             {/* Error Message */}
@@ -259,8 +332,8 @@ export default function SetPasswordPage() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium rounded-xl"
-              disabled={isSubmitting}
+              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || !isPasswordValid() || newPassword !== confirmPassword}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -285,6 +358,22 @@ export default function SetPasswordPage() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Password Requirement Component
+function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {met ? (
+        <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+      ) : (
+        <X className="h-4 w-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
+      )}
+      <span className={`text-xs ${met ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+        {text}
+      </span>
     </div>
   );
 }

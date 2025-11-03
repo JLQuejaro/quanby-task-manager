@@ -8,10 +8,17 @@ export function GoogleSignInButton() {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    // Redirect to backend Google OAuth endpoint
-    // Backend will handle email verification requirement
+    
+    // FIXED: Remove /api prefix - backend routes are at /auth/google not /api/auth/google
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    window.location.href = `${apiUrl}/api/auth/google`;
+    
+    // Backend route is defined as @Controller('auth') with @Get('google')
+    // So the full path is: http://localhost:3001/auth/google
+    const googleAuthUrl = `${apiUrl}/auth/google`;
+    
+    console.log('🔐 Redirecting to Google OAuth:', googleAuthUrl);
+    
+    window.location.href = googleAuthUrl;
   };
 
   return (

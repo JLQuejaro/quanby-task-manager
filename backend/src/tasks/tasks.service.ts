@@ -45,6 +45,21 @@ export class TasksService {
     return task;
   }
 
+  // Toggle task completion status
+  async toggleComplete(id: number, userId: number) {
+    const task = await this.findOne(id, userId);
+    
+    const [updated] = await db.update(tasks)
+      .set({
+        completed: !task.completed,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      .returning();
+    
+    return updated;
+  }
+
   // Delete task (OLD - no longer used directly)
   async remove(id: number, userId: number) {
     const [task] = await db.delete(tasks)
@@ -55,18 +70,15 @@ export class TasksService {
     return task;
   }
 
-  // ========== NEW ARCHIVE METHODS ==========
+  // ========== ARCHIVE METHODS ==========
 
   // Archive task instead of deleting
   async archiveTask(id: number, userId: number) {
-    // Get the task first
     const task = await this.findOne(id, userId);
 
-    // Calculate expiration date (30 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Insert into archived_tasks
     const [archived] = await db.insert(archivedTasks).values({
       originalTaskId: task.id,
       title: task.title,
@@ -81,7 +93,6 @@ export class TasksService {
       originalUpdatedAt: task.updatedAt,
     }).returning();
 
-    // Delete from tasks table
     await db.delete(tasks).where(
       and(eq(tasks.id, id), eq(tasks.userId, userId))
     );
@@ -95,7 +106,6 @@ export class TasksService {
 
   // Get all archived tasks for a user
   async getArchivedTasks(userId: number) {
-    // First, clean up expired tasks
     const now = new Date();
     await db.delete(archivedTasks).where(
       and(
@@ -104,7 +114,6 @@ export class TasksService {
       )
     );
 
-    // Then return remaining archived tasks
     const archived = await db.select()
       .from(archivedTasks)
       .where(eq(archivedTasks.userId, userId));
@@ -114,7 +123,6 @@ export class TasksService {
 
   // Restore archived task
   async restoreTask(archivedId: number, userId: number) {
-    // Get the archived task
     const [archived] = await db.select()
       .from(archivedTasks)
       .where(
@@ -128,12 +136,10 @@ export class TasksService {
       throw new NotFoundException('Archived task not found');
     }
 
-    // Check if expired
     if (new Date(archived.expiresAt) < new Date()) {
       throw new NotFoundException('Archived task has expired');
     }
 
-    // Restore to tasks table
     const [restoredTask] = await db.insert(tasks).values({
       title: archived.title,
       description: archived.description,
@@ -145,7 +151,6 @@ export class TasksService {
       updatedAt: new Date(),
     }).returning();
 
-    // Delete from archived_tasks
     await db.delete(archivedTasks).where(
       and(
         eq(archivedTasks.id, archivedId),

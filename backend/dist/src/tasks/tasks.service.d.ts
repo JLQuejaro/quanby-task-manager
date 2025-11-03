@@ -44,6 +44,17 @@ export declare class TasksService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    toggleComplete(id: number, userId: number): Promise<{
+        id: number;
+        title: string;
+        description: string;
+        priority: string;
+        deadline: Date;
+        completed: boolean;
+        userId: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     remove(id: number, userId: number): Promise<{
         description: string;
         id: number;

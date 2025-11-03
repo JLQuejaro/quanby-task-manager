@@ -42,6 +42,17 @@ let TasksService = class TasksService {
             throw new common_1.NotFoundException('Task not found');
         return task;
     }
+    async toggleComplete(id, userId) {
+        const task = await this.findOne(id, userId);
+        const [updated] = await db_1.db.update(schema_1.tasks)
+            .set({
+            completed: !task.completed,
+            updatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.tasks.id, id), (0, drizzle_orm_1.eq)(schema_1.tasks.userId, userId)))
+            .returning();
+        return updated;
+    }
     async remove(id, userId) {
         const [task] = await db_1.db.delete(schema_1.tasks)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.tasks.id, id), (0, drizzle_orm_1.eq)(schema_1.tasks.userId, userId)))

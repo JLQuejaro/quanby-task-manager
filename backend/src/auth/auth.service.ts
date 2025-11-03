@@ -178,15 +178,24 @@ export class AuthService {
         
         const randomPassword = crypto.randomBytes(32).toString('hex');
         
+        // FIXED: Google users also need to verify email
         [user] = await db.insert(users).values({
           email: googleUser.email,
           name: googleUser.name,
           password: randomPassword,
           authProvider: 'google',
-          emailVerified: true,
+          emailVerified: false, // ✅ Changed from true to false
         }).returning();
         
+        // Send verification email to Google users too
+        await this.emailVerificationService.sendVerificationEmail(
+          user.id,
+          user.email,
+          user.name,
+        );
+        
         console.log('✅ New Google user created:', user.email);
+        console.log('📧 Verification email sent to:', user.email);
       } else {
         console.log('✅ Existing Google user logged in:', user.email);
       }
@@ -199,7 +208,7 @@ export class AuthService {
           email: user.email, 
           name: user.name,
           authProvider: user.authProvider || 'google',
-          emailVerified: user.emailVerified || true,
+          emailVerified: user.emailVerified || false, // ✅ Use actual value
         },
       };
     } catch (error) {

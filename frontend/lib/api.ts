@@ -7,14 +7,34 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// Add token to requests
+// Add token to requests - with browser check
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // Only access localStorage in browser environment
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Log the error details for debugging
+      console.error('API Error:', {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config?.url,
+        method: error.config?.method,
+      });
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Auth API
 export const authApi = {
@@ -38,7 +58,6 @@ export const authApi = {
     return response.data;
   },
 
-  // FIXED: Match backend DTO field names
   setPassword: async (password: string, passwordConfirm: string) => {
     console.log('🔐 Frontend API calling setPassword:', {
       passwordLength: password.length,
@@ -52,7 +71,6 @@ export const authApi = {
     return response.data;
   },
 
-  // FIXED: Match backend DTO field names
   changePassword: async (
     currentPassword: string,
     newPassword: string,
@@ -134,23 +152,67 @@ export const tasksApi = {
 // Archive API
 export const archiveApi = {
   getArchived: async () => {
-    const response = await api.get('/tasks/archived');
-    return response.data;
+    try {
+      console.log('📦 Fetching archived tasks...');
+      const response = await api.get('/tasks/archived/all');
+      console.log('✅ Archived tasks fetched successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to fetch archived tasks:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
+    }
   },
 
   restore: async (id: number) => {
-    const response = await api.post(`/tasks/archived/${id}/restore`);
-    return response.data;
+    try {
+      console.log(`🔄 Restoring task ${id}...`);
+      const response = await api.post(`/tasks/archived/${id}/restore`);
+      console.log('✅ Task restored successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Failed to restore task ${id}:`, {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
+    }
   },
 
   permanentlyDelete: async (id: number) => {
-    const response = await api.delete(`/tasks/archived/${id}`);
-    return response.data;
+    try {
+      console.log(`🗑️ Permanently deleting task ${id}...`);
+      const response = await api.delete(`/tasks/archived/${id}`);
+      console.log('✅ Task permanently deleted:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Failed to delete task ${id}:`, {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
+    }
   },
 
   clearAll: async () => {
-    const response = await api.delete('/tasks/archived');
-    return response.data;
+    try {
+      console.log('🗑️ Clearing all archived tasks...');
+      const response = await api.delete('/tasks/archived/clear-all/all');
+      console.log('✅ All archived tasks cleared:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to clear archived tasks:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw error;
+    }
   },
 };
 

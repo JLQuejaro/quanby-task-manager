@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('token');
       if (!token) return false;
 
-      const response = await fetch(`${API_URL}/api/auth/has-password`, {
+      const response = await fetch(`${API_URL}/auth/has-password`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -82,9 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
           console.log('📧 Email verified:', parsedUser.emailVerified);
           
-          // CRITICAL FIX: Check email verification status first
+          // FIXED: Check email verification status first
           const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
           
+          // FIXED: Use emailVerified instead of isEmailVerified
           if (!parsedUser.emailVerified && !isPublicPath && pathname !== '/verify-email-notice') {
             console.log('⚠️ Email not verified, redirecting to notice page');
             router.push('/verify-email-notice');
@@ -148,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { action: 'login', email: response.user.email }
       );
       
-      // Redirect based on verification and password status
+      // FIXED: Redirect based on verification and password status
       if (!response.user.emailVerified) {
         router.push('/verify-email-notice');
       } else if (!hasPassword) {
