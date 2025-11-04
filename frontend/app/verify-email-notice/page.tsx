@@ -10,7 +10,7 @@ import { Sun, Moon } from 'lucide-react';
 
 export default function VerifyEmailNoticePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
@@ -87,11 +87,10 @@ export default function VerifyEmailNoticePage() {
     }
   };
 
+  // FIXED: Use logout from AuthContext instead of manual logout
   const handleLogout = () => {
-    console.log('👋 Logging out user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+    console.log('👋 Logging out from verify-email-notice page');
+    logout();
   };
 
   const formatCooldown = (seconds: number) => {

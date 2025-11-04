@@ -10,12 +10,9 @@ export const users = pgTable('users', {
   authProvider: varchar('auth_provider', { length: 20 }).default('email'),
   googleId: varchar('google_id', { length: 255 }),
   
-  // Email verification fields - CRITICAL for email verification
+  // Email verification fields
   emailVerified: boolean('email_verified').default(false),
-  verificationToken: varchar('verification_token', { length: 255 }), // ⚠️ YOU WERE MISSING THIS!
-  
-  // Optional but recommended: Token expiry for security
-  // tokenExpiry: timestamp('token_expiry'),
+  verificationToken: varchar('verification_token', { length: 255 }),
   
   // Security
   lastPasswordChange: timestamp('last_password_change'),
@@ -23,6 +20,31 @@ export const users = pgTable('users', {
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ✅ NEW: Temporary registrations for unverified Google users
+export const temporaryRegistrations = pgTable('temporary_registrations', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  
+  // Google OAuth data
+  googleId: varchar('google_id', { length: 255 }).notNull().unique(),
+  googleEmail: varchar('google_email', { length: 255 }),
+  googleName: varchar('google_name', { length: 255 }),
+  googlePicture: text('google_picture'),
+  
+  // Verification
+  verificationToken: varchar('verification_token', { length: 255 }).notNull().unique(),
+  tokenExpiresAt: timestamp('token_expires_at').notNull(),
+  
+  // Metadata
+  attempts: integer('attempts').default(1).notNull(), // Track login attempts
+  lastAttemptAt: timestamp('last_attempt_at').defaultNow().notNull(),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(), // Auto-cleanup after 7 days
 });
 
 export const tasks = pgTable('tasks', {

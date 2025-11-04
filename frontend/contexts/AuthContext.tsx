@@ -8,11 +8,13 @@ import { useNotifications } from '@/contexts/NotificationContext';
 
 interface AuthContextType {
   user: User | null;
-  login: (credentials: { email: string; password: string }) => Promise<User>;
+  login: (credentials: { email: string; password: string }, rememberMe?: boolean) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
   setUser: (user: User | null) => void;
   checkPasswordStatus: () => Promise<boolean>;
+  rememberMe: boolean;
+  setRememberMe: (remember: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +38,7 @@ const PUBLIC_PATHS = [
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [rememberMe, setRememberMeState] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { addNotification } = useNotifications();
@@ -68,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check if user is already logged in
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
+      const rememberMePref = localStorage.getItem('remember_me') === 'true';
+
+      setRememberMeState(rememberMePref);
 
       if (token && storedUser) {
         try {
@@ -80,12 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
           console.log('✅ User loaded from localStorage:', parsedUser.email);
           console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
+          console.log('💾 Remember Me:', rememberMePref ? 'Enabled' : 'Disabled');
           console.log('📧 Email verified:', parsedUser.emailVerified);
           
-          // FIXED: Check email verification status first
+          // Mark session as active
+          if (rememberMePref) {
+            sessionStorage.setItem('session_active', 'true');
+          }
+          
+          // Check email verification status first
           const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
           
-          // FIXED: Use emailVerified instead of isEmailVerified
           if (!parsedUser.emailVerified && !isPublicPath && pathname !== '/verify-email-notice') {
             console.log('⚠️ Email not verified, redirecting to notice page');
             router.push('/verify-email-notice');
@@ -110,6 +121,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [pathname, router]);
 
+  // CRITICAL: Auto-logout when browser/tab closes
+  useEffect(() => {
+    // Handle browser/tab close
+    const handleBeforeUnload = () => {
+      if (!rememberMe) {
+        console.log('🚪 Browser closing - Auto-logout enabled (Remember Me: OFF)');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('session_active');
+      } else {
+        console.log('💾 Browser closing - Session persisted (Remember Me: ON)');
+      }
+    };
+
+    // Session-based logout (clears when all tabs close)
+    const checkSession = () => {
+      if (!rememberMe && user) {
+        const sessionActive = sessionStorage.getItem('session_active');
+        
+        if (!sessionActive) {
+          console.log('🚪 All tabs closed - Auto-logout triggered');
+          performLogout();
+        } else {
+          // Mark this session as active
+          sessionStorage.setItem('session_active', 'true');
+        }
+      }
+    };
+
+    // Register event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('focus', checkSession);
+
+    // Initial session check
+    if (!rememberMe && user) {
+      const sessionActive = sessionStorage.getItem('session_active');
+      if (!sessionActive) {
+        sessionStorage.setItem('session_active', 'true');
+      }
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('focus', checkSession);
+    };
+  }, [user, rememberMe]);
+
+  // OPTIONAL: Inactivity timeout (30 minutes)
+  useEffect(() => {
+    if (!user || rememberMe) return;
+
+    const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimeout = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log('⏰ Inactivity timeout (30 min) - Auto-logout triggered');
+        addNotification(
+          'auth_status',
+          'Session Expired',
+          'You have been logged out due to inactivity.',
+          undefined,
+          { action: 'auto_logout_inactivity' }
+        );
+        performLogout();
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Events that reset the inactivity timer
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, resetTimeout);
+    });
+
+    // Initial timeout
+    resetTimeout();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimeout);
+      });
+    };
+  }, [user, rememberMe]);
+
   // Protect routes
   useEffect(() => {
     if (!isLoading && !user) {
@@ -122,14 +220,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isLoading, pathname, router]);
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const performLogout = () => {
+    console.log('🔓 Performing logout...');
+    
+    // Clear all auth data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('session_active');
+    
+    // Clear user state
+    setUser(null);
+    
+    // Redirect to login
+    router.push('/login');
+  };
+
+  const login = async (credentials: { email: string; password: string }, rememberMeOption = false) => {
     try {
-      // FIXED: Destructure email and password from credentials object
       const { email, password } = credentials;
       
-      // FIXED: Pass email and password as separate arguments
       const response = await authApi.login(email, password);
       localStorage.setItem('token', response.access_token);
+      
+      // Set remember me preference
+      setRememberMeState(rememberMeOption);
+      localStorage.setItem('remember_me', rememberMeOption.toString());
+      
+      // Mark session as active
+      sessionStorage.setItem('session_active', 'true');
       
       // Check password status after login
       const hasPassword = await checkPasswordStatus();
@@ -139,8 +257,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       console.log('✅ User logged in:', response.user.email);
       console.log('🔑 Password status:', hasPassword ? 'Set' : 'Not set');
+      console.log('💾 Remember Me:', rememberMeOption ? 'Enabled' : 'Disabled');
       console.log('📧 Email verified:', response.user.emailVerified);
       
+      // FIXED: Only show notification for successful login
       addNotification(
         'auth_status',
         'Welcome Back!',
@@ -149,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { action: 'login', email: response.user.email }
       );
       
-      // FIXED: Redirect based on verification and password status
+      // Redirect based on verification and password status
       if (!response.user.emailVerified) {
         router.push('/verify-email-notice');
       } else if (!hasPassword) {
@@ -162,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error('❌ Login error:', error);
       
+      // FIXED: Only show notification for failed login
       addNotification(
         'auth_status',
         'Login Failed',
@@ -174,24 +295,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // FIXED: Removed logout notification
   const logout = () => {
-    const userEmail = user?.email || 'user';
-    const userName = user?.name || 'there';
-    
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('session_active');
     setUser(null);
     console.log('👋 User logged out');
     
-    addNotification(
-      'auth_status',
-      'Logged Out',
-      `See you later, ${userName}! You've been successfully logged out.`,
-      undefined,
-      { action: 'logout', email: userEmail }
-    );
-    
     router.push('/login');
+  };
+
+  const setRememberMe = (remember: boolean) => {
+    console.log('💾 Remember Me preference changed:', remember ? 'Enabled' : 'Disabled');
+    setRememberMeState(remember);
+    localStorage.setItem('remember_me', remember.toString());
+    
+    if (remember && user) {
+      sessionStorage.setItem('session_active', 'true');
+    }
   };
 
   return (
@@ -201,7 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout, 
       isLoading, 
       setUser,
-      checkPasswordStatus 
+      checkPasswordStatus,
+      rememberMe,
+      setRememberMe
     }}>
       {children}
     </AuthContext.Provider>

@@ -37,7 +37,7 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
     async validate(accessToken, refreshToken, profile, done) {
         try {
             console.log('✅ Google profile received:', profile.emails[0]?.value);
-            const { name, emails, photos } = profile;
+            const { name, emails, photos, id } = profile;
             if (!emails || emails.length === 0) {
                 console.error('❌ No email found in Google profile');
                 return done(new Error('No email found in Google profile'), null);
@@ -46,6 +46,7 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
                 email: emails[0].value,
                 name: name ? `${name.givenName || ''} ${name.familyName || ''}`.trim() : 'User',
                 picture: photos?.[0]?.value,
+                googleId: id,
                 accessToken,
             };
             console.log('✅ User validated:', user.email);

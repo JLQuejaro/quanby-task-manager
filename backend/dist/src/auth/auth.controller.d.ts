@@ -33,12 +33,14 @@ export declare class AuthController {
             emailVerified: boolean;
         };
     }>;
-    googleCallback(callbackDto: GoogleOAuthCallbackDto, ip: string, userAgent: string): Promise<import("./google-oauth.service").GoogleAuthResult | {
+    googleCallback(callbackDto: GoogleOAuthCallbackDto, ip: string, userAgent: string): Promise<import("./google-oauth.service").GoogleAuthResult>;
+    verifyGoogleEmail(body: {
+        token: string;
+    }, ip: string, userAgent: string): Promise<{
+        success: boolean;
+        message: string;
         access_token: string;
-        status: "created" | "existing" | "pending_verification" | "conflict";
-        user?: any;
-        message?: string;
-        requiresAction?: string;
+        user: any;
     }>;
     googleAuth(req: Request): Promise<void>;
     googleAuthRedirect(req: Request, res: Response): Promise<void>;

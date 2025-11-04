@@ -65,9 +65,13 @@ let AuthService = class AuthService {
             connectionString: process.env.DATABASE_URL,
         });
     }
+    async findByEmail(email) {
+        const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, email));
+        return user || null;
+    }
     async register(registerDto, ipAddress, userAgent) {
         await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'register');
-        const [existingUser] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, registerDto.email));
+        const existingUser = await this.findByEmail(registerDto.email);
         if (existingUser) {
             await this.securityLogService.log({
                 email: registerDto.email,
@@ -77,7 +81,14 @@ let AuthService = class AuthService {
                 userAgent,
                 metadata: { reason: 'Email already registered' },
             });
-            throw new common_1.UnauthorizedException('Email already registered');
+            console.log('❌ Registration failed: Email already exists:', registerDto.email);
+            throw new common_1.ConflictException({
+                statusCode: 409,
+                message: 'This email is already registered. Please login instead or use a different email.',
+                error: 'Conflict',
+                action: 'redirect_to_login',
+                email: registerDto.email,
+            });
         }
         this.validatePasswordStrength(registerDto.password);
         const hashedPassword = await bcrypt.hash(registerDto.password, 12);
@@ -117,7 +128,7 @@ let AuthService = class AuthService {
     }
     async login(loginDto, ipAddress, userAgent) {
         await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'login');
-        const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, loginDto.email));
+        const user = await this.findByEmail(loginDto.email);
         if (!user) {
             await this.securityLogService.log({
                 email: loginDto.email,
@@ -127,7 +138,14 @@ let AuthService = class AuthService {
                 userAgent,
                 metadata: { reason: 'User not found' },
             });
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            console.log('❌ Login failed: User not found:', loginDto.email);
+            throw new common_1.NotFoundException({
+                statusCode: 404,
+                message: 'No account found with this email. Please register first.',
+                error: 'Not Found',
+                action: 'redirect_to_register',
+                email: loginDto.email,
+            });
         }
         if (!user.password) {
             await this.securityLogService.log({
@@ -139,7 +157,14 @@ let AuthService = class AuthService {
                 userAgent,
                 metadata: { reason: 'No password set' },
             });
-            throw new common_1.UnauthorizedException('No password set. Please set a password first or use Google Sign-In.');
+            console.log('❌ Login failed: No password set for:', user.email);
+            throw new common_1.ConflictException({
+                statusCode: 409,
+                message: 'This account uses Google Sign-In. Please use the Google button instead.',
+                error: 'Conflict',
+                action: 'use_google_signin',
+                email: user.email,
+            });
         }
         const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
         if (!isPasswordValid) {
@@ -152,7 +177,14 @@ let AuthService = class AuthService {
                 userAgent,
                 metadata: { reason: 'Invalid password' },
             });
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            console.log('❌ Login failed: Invalid password for:', user.email);
+            throw new common_1.UnauthorizedException({
+                statusCode: 401,
+                message: 'Incorrect password. Please try again.',
+                error: 'Unauthorized',
+                action: 'retry_password',
+                email: user.email,
+            });
         }
         await this.securityLogService.log({
             userId: user.id,
@@ -178,43 +210,6 @@ let AuthService = class AuthService {
             },
         };
     }
-    async googleLogin(googleUser) {
-        try {
-            let [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.email, googleUser.email));
-            if (!user) {
-                console.log('🆕 Creating new Google user:', googleUser.email);
-                const randomPassword = crypto.randomBytes(32).toString('hex');
-                [user] = await db_1.db.insert(schema_1.users).values({
-                    email: googleUser.email,
-                    name: googleUser.name,
-                    password: randomPassword,
-                    authProvider: 'google',
-                    emailVerified: false,
-                }).returning();
-                await this.emailVerificationService.sendVerificationEmail(user.id, user.email, user.name);
-                console.log('✅ New Google user created:', user.email);
-                console.log('📧 Verification email sent to:', user.email);
-            }
-            else {
-                console.log('✅ Existing Google user logged in:', user.email);
-            }
-            const payload = { sub: user.id, email: user.email };
-            return {
-                access_token: await this.jwtService.signAsync(payload),
-                user: {
-                    id: user.id.toString(),
-                    email: user.email,
-                    name: user.name,
-                    authProvider: user.authProvider || 'google',
-                    emailVerified: user.emailVerified || false,
-                },
-            };
-        }
-        catch (error) {
-            console.error('❌ Google login error:', error);
-            throw new common_1.UnauthorizedException('Google authentication failed');
-        }
-    }
     async validateUser(userId) {
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
         if (!user)
@@ -233,11 +228,10 @@ let AuthService = class AuthService {
         }).from(schema_1.users);
         return allUsers;
     }
-    async setPassword(userId, newPassword, confirmPassword, ipAddress, userAgent) {
+    async setPassword(userId, newPassword, ipAddress, userAgent) {
         console.log('🔐 setPassword called with:', {
             userId,
             newPasswordLength: newPassword?.length || 0,
-            confirmPasswordLength: confirmPassword?.length || 0,
             ipAddress,
         });
         const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
@@ -246,9 +240,6 @@ let AuthService = class AuthService {
         }
         if (user.password && user.password.length > 0) {
             throw new common_1.BadRequestException('Password already set. Use change password instead.');
-        }
-        if (newPassword !== confirmPassword) {
-            throw new common_1.BadRequestException('Passwords do not match');
         }
         this.validatePasswordStrength(newPassword);
         const hashedPassword = await bcrypt.hash(newPassword, 12);

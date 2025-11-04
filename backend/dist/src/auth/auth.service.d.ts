@@ -10,6 +10,19 @@ export declare class AuthService {
     private rateLimitService;
     private pool;
     constructor(jwtService: JwtService, emailVerificationService: EmailVerificationService, securityLogService: SecurityLogService, rateLimitService: RateLimitService);
+    findByEmail(email: string): Promise<{
+        id: number;
+        email: string;
+        password: string;
+        name: string;
+        authProvider: string;
+        googleId: string;
+        emailVerified: boolean;
+        verificationToken: string;
+        lastPasswordChange: Date;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string): Promise<{
         access_token: string;
         user: {
@@ -22,16 +35,6 @@ export declare class AuthService {
         message: string;
     }>;
     login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{
-        access_token: string;
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            authProvider: string;
-            emailVerified: boolean;
-        };
-    }>;
-    googleLogin(googleUser: any): Promise<{
         access_token: string;
         user: {
             id: string;
@@ -61,7 +64,7 @@ export declare class AuthService {
         emailVerified: boolean;
         createdAt: Date;
     }[]>;
-    setPassword(userId: number, newPassword: string, confirmPassword: string, ipAddress?: string, userAgent?: string): Promise<{
+    setPassword(userId: number, newPassword: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
     hasPassword(userId: number): Promise<{

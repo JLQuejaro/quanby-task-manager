@@ -19,6 +19,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       throw new Error('Missing required Google OAuth environment variables');
     }
 
+    // ✅ FIXED: Removed invalid options (accessType and prompt)
+    // These are not part of the passport-google-oauth20 strategy options
     super({
       clientID,
       clientSecret,
@@ -35,8 +37,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<any> {
     try {
       console.log('✅ Google profile received:', profile.emails[0]?.value);
-
-      const { name, emails, photos } = profile;
+      
+      const { name, emails, photos, id } = profile;
 
       // Validate required fields
       if (!emails || emails.length === 0) {
@@ -44,10 +46,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         return done(new Error('No email found in Google profile'), null);
       }
 
+      // ✅ Pass all necessary data including Google ID
       const user = {
         email: emails[0].value,
         name: name ? `${name.givenName || ''} ${name.familyName || ''}`.trim() : 'User',
         picture: photos?.[0]?.value,
+        googleId: id, // ✅ Google's unique user ID (sub)
         accessToken,
       };
 

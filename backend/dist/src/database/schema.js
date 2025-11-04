@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.archivedTasks = exports.tasks = exports.users = void 0;
+exports.archivedTasks = exports.tasks = exports.temporaryRegistrations = exports.users = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.users = (0, pg_core_1.pgTable)('users', {
     id: (0, pg_core_1.serial)('id').primaryKey(),
@@ -14,6 +14,21 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     lastPasswordChange: (0, pg_core_1.timestamp)('last_password_change'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+});
+exports.temporaryRegistrations = (0, pg_core_1.pgTable)('temporary_registrations', {
+    id: (0, pg_core_1.serial)('id').primaryKey(),
+    email: (0, pg_core_1.varchar)('email', { length: 255 }).notNull(),
+    name: (0, pg_core_1.varchar)('name', { length: 255 }).notNull(),
+    googleId: (0, pg_core_1.varchar)('google_id', { length: 255 }).notNull().unique(),
+    googleEmail: (0, pg_core_1.varchar)('google_email', { length: 255 }),
+    googleName: (0, pg_core_1.varchar)('google_name', { length: 255 }),
+    googlePicture: (0, pg_core_1.text)('google_picture'),
+    verificationToken: (0, pg_core_1.varchar)('verification_token', { length: 255 }).notNull().unique(),
+    tokenExpiresAt: (0, pg_core_1.timestamp)('token_expires_at').notNull(),
+    attempts: (0, pg_core_1.integer)('attempts').default(1).notNull(),
+    lastAttemptAt: (0, pg_core_1.timestamp)('last_attempt_at').defaultNow().notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+    expiresAt: (0, pg_core_1.timestamp)('expires_at').notNull(),
 });
 exports.tasks = (0, pg_core_1.pgTable)('tasks', {
     id: (0, pg_core_1.serial)('id').primaryKey(),

@@ -53,18 +53,55 @@ let AuthController = class AuthController {
         }
         return result;
     }
+    async verifyGoogleEmail(body, ip, userAgent) {
+        console.log('📧 Google email verification request');
+        const result = await this.googleOAuthService.verifyGoogleUser(body.token, ip, userAgent);
+        const payload = { sub: result.user.id, email: result.user.email };
+        const accessToken = await this.authService['jwtService'].signAsync(payload);
+        return {
+            success: true,
+            message: 'Email verified successfully',
+            access_token: accessToken,
+            user: result.user,
+        };
+    }
     async googleAuth(req) {
     }
     async googleAuthRedirect(req, res) {
         try {
-            const result = await this.authService.googleLogin(req.user);
+            const googleUser = req.user;
+            const ipAddress = req.ip;
+            const userAgent = req.headers['user-agent'];
+            console.log('🔄 Legacy Google OAuth callback hit');
+            console.log('👤 Google user:', googleUser);
+            const result = await this.googleOAuthService.handleGoogleAuthPassport({
+                email: googleUser.email,
+                name: googleUser.name,
+                picture: googleUser.picture,
+                googleId: googleUser.googleId,
+            }, ipAddress, userAgent);
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-            return res.redirect(`${frontendUrl}/callback?token=${result.access_token}`);
+            if (result.status === 'no_account') {
+                console.log('❌ No account found - redirecting to register');
+                return res.redirect(`${frontendUrl}/register?error=${encodeURIComponent(result.message || 'Please register first')}&email=${encodeURIComponent(googleUser.email)}`);
+            }
+            if (result.status === 'pending_verification') {
+                console.log('📧 Verification required - redirecting to verify-email page');
+                return res.redirect(`${frontendUrl}/verify-email?message=${encodeURIComponent(result.message || 'Please check your email to verify your account')}&email=${encodeURIComponent(googleUser.email)}`);
+            }
+            if (result.status === 'existing' && result.user) {
+                const payload = { sub: result.user.id, email: result.user.email };
+                const accessToken = await this.authService['jwtService'].signAsync(payload);
+                return res.redirect(`${frontendUrl}/callback?token=${accessToken}`);
+            }
+            console.error('❌ Unexpected status:', result.status);
+            return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Authentication failed')}`);
         }
         catch (error) {
+            console.error('❌ Legacy Google OAuth error:', error);
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-            return res.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
+            return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMessage)}`);
         }
     }
     async verifyEmailGet(token, ip) {
@@ -203,9 +240,22 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "googleCallback", null);
 __decorate([
+    (0, common_1.Post)('google/verify-email'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Verify Google user email from verification link' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Ip)()),
+    __param(2, (0, common_1.Headers)('user-agent')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyGoogleEmail", null);
+__decorate([
     (0, common_1.Get)('google'),
     (0, common_1.UseGuards)(google_auth_guard_1.GoogleAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Login with Google (legacy)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Login with Google - Initiates OAuth flow',
+    }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -214,7 +264,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('callback/google'),
     (0, common_1.UseGuards)(google_auth_guard_1.GoogleAuthGuard),
-    (0, swagger_1.ApiOperation)({ summary: 'Google OAuth callback (legacy)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Google OAuth callback - handles redirect from Google',
+    }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),

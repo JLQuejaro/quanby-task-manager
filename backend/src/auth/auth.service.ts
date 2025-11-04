@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { db } from '../database/db';
 import { users } from '../database/schema';
@@ -27,10 +27,17 @@ export class AuthService {
     });
   }
 
+  // FIXED: Proper email existence check
+  async findByEmail(email: string) {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || null;
+  }
+
   async register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string) {
     await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'register');
 
-    const [existingUser] = await db.select().from(users).where(eq(users.email, registerDto.email));
+    // FIXED: Check if user already exists with detailed error
+    const existingUser = await this.findByEmail(registerDto.email);
     
     if (existingUser) {
       await this.securityLogService.log({
@@ -41,7 +48,17 @@ export class AuthService {
         userAgent,
         metadata: { reason: 'Email already registered' },
       });
-      throw new UnauthorizedException('Email already registered');
+
+      console.log('❌ Registration failed: Email already exists:', registerDto.email);
+      
+      // FIXED: Use ConflictException with clear message
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'This email is already registered. Please login instead or use a different email.',
+        error: 'Conflict',
+        action: 'redirect_to_login',
+        email: registerDto.email,
+      });
     }
 
     this.validatePasswordStrength(registerDto.password);
@@ -97,7 +114,8 @@ export class AuthService {
   async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
     await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'login');
 
-    const [user] = await db.select().from(users).where(eq(users.email, loginDto.email));
+    // FIXED: Check if user exists with detailed error
+    const user = await this.findByEmail(loginDto.email);
     
     if (!user) {
       await this.securityLogService.log({
@@ -108,7 +126,17 @@ export class AuthService {
         userAgent,
         metadata: { reason: 'User not found' },
       });
-      throw new UnauthorizedException('Invalid credentials');
+
+      console.log('❌ Login failed: User not found:', loginDto.email);
+      
+      // FIXED: Use NotFoundException with clear message
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'No account found with this email. Please register first.',
+        error: 'Not Found',
+        action: 'redirect_to_register',
+        email: loginDto.email,
+      });
     }
 
     if (!user.password) {
@@ -121,7 +149,16 @@ export class AuthService {
         userAgent,
         metadata: { reason: 'No password set' },
       });
-      throw new UnauthorizedException('No password set. Please set a password first or use Google Sign-In.');
+
+      console.log('❌ Login failed: No password set for:', user.email);
+      
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'This account uses Google Sign-In. Please use the Google button instead.',
+        error: 'Conflict',
+        action: 'use_google_signin',
+        email: user.email,
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
@@ -136,7 +173,16 @@ export class AuthService {
         userAgent,
         metadata: { reason: 'Invalid password' },
       });
-      throw new UnauthorizedException('Invalid credentials');
+
+      console.log('❌ Login failed: Invalid password for:', user.email);
+      
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Incorrect password. Please try again.',
+        error: 'Unauthorized',
+        action: 'retry_password',
+        email: user.email,
+      });
     }
 
     await this.securityLogService.log({
@@ -169,53 +215,10 @@ export class AuthService {
     };
   }
 
-  async googleLogin(googleUser: any) {
-    try {
-      let [user] = await db.select().from(users).where(eq(users.email, googleUser.email));
-
-      if (!user) {
-        console.log('🆕 Creating new Google user:', googleUser.email);
-        
-        const randomPassword = crypto.randomBytes(32).toString('hex');
-        
-        // FIXED: Google users also need to verify email
-        [user] = await db.insert(users).values({
-          email: googleUser.email,
-          name: googleUser.name,
-          password: randomPassword,
-          authProvider: 'google',
-          emailVerified: false, // ✅ Changed from true to false
-        }).returning();
-        
-        // Send verification email to Google users too
-        await this.emailVerificationService.sendVerificationEmail(
-          user.id,
-          user.email,
-          user.name,
-        );
-        
-        console.log('✅ New Google user created:', user.email);
-        console.log('📧 Verification email sent to:', user.email);
-      } else {
-        console.log('✅ Existing Google user logged in:', user.email);
-      }
-
-      const payload = { sub: user.id, email: user.email };
-      return {
-        access_token: await this.jwtService.signAsync(payload),
-        user: { 
-          id: user.id.toString(), 
-          email: user.email, 
-          name: user.name,
-          authProvider: user.authProvider || 'google',
-          emailVerified: user.emailVerified || false, // ✅ Use actual value
-        },
-      };
-    } catch (error) {
-      console.error('❌ Google login error:', error);
-      throw new UnauthorizedException('Google authentication failed');
-    }
-  }
+  // ❌ REMOVED: googleLogin() method
+  // This method was creating users directly in the users table,
+  // bypassing the temporary_registrations flow.
+  // Use googleOAuthService.handleGoogleAuth() instead.
 
   async validateUser(userId: number) {
     const [user] = await db.select().from(users).where(eq(users.id, userId));
@@ -240,38 +243,27 @@ export class AuthService {
   async setPassword(
     userId: number, 
     newPassword: string,
-    confirmPassword: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
     console.log('🔐 setPassword called with:', {
       userId,
       newPasswordLength: newPassword?.length || 0,
-      confirmPasswordLength: confirmPassword?.length || 0,
       ipAddress,
     });
 
-    // Get user first
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Check if user already has a password
     if (user.password && user.password.length > 0) {
       throw new BadRequestException('Password already set. Use change password instead.');
     }
 
-    // Validate passwords match FIRST
-    if (newPassword !== confirmPassword) {
-      throw new BadRequestException('Passwords do not match');
-    }
-
-    // Then validate password strength
     this.validatePasswordStrength(newPassword);
 
-    // Hash and save password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     
     await db.update(users)
@@ -324,7 +316,6 @@ export class AuthService {
 
     await this.rateLimitService.checkRateLimit(`user_${userId}`, 'password_change');
 
-    // Get user from database
     const [user] = await db.select()
       .from(users)
       .where(eq(users.id, userId));
@@ -337,7 +328,6 @@ export class AuthService {
       throw new UnauthorizedException('No password set. Use set password instead.');
     }
 
-    // Verify current password is correct FIRST
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
     
     if (!isCurrentPasswordValid) {
@@ -353,15 +343,12 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    // Validate that new passwords match
     if (newPassword !== confirmPassword) {
       throw new BadRequestException('New passwords do not match');
     }
 
-    // Validate password strength
     this.validatePasswordStrength(newPassword);
 
-    // Check if new password is same as current password
     const isSameAsCurrentPassword = await bcrypt.compare(newPassword, user.password);
     
     if (isSameAsCurrentPassword) {
@@ -377,7 +364,6 @@ export class AuthService {
       throw new BadRequestException('New password must be different from current password');
     }
 
-    // Hash and save new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     
     await db.update(users)
@@ -387,7 +373,6 @@ export class AuthService {
       })
       .where(eq(users.id, userId));
 
-    // Revoke all other sessions for security
     await this.revokeAllUserSessions(userId);
 
     await this.securityLogService.log({
@@ -411,44 +396,36 @@ export class AuthService {
   }
 
   private validatePasswordStrength(password: string): void {
-    // Check if password exists and is a string
     if (!password || typeof password !== 'string') {
       throw new BadRequestException('Password is required');
     }
 
-    // Trim password to check actual content
     const trimmedPassword = password.trim();
     
     if (trimmedPassword.length === 0) {
       throw new BadRequestException('Password cannot be empty');
     }
 
-    // Check minimum length
     if (trimmedPassword.length < 8) {
       throw new BadRequestException('Password must be at least 8 characters long');
     }
 
-    // Check for uppercase letter
     if (!/[A-Z]/.test(password)) {
       throw new BadRequestException('Password must contain at least one uppercase letter (A-Z)');
     }
 
-    // Check for lowercase letter
     if (!/[a-z]/.test(password)) {
       throw new BadRequestException('Password must contain at least one lowercase letter (a-z)');
     }
 
-    // Check for number
     if (!/[0-9]/.test(password)) {
       throw new BadRequestException('Password must contain at least one number (0-9)');
     }
 
-    // Check for special character
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       throw new BadRequestException('Password must contain at least one special character (!@#$%^&*)');
     }
 
-    // Check for spaces
     if (/\s/.test(password)) {
       throw new BadRequestException('Password must not contain spaces');
     }

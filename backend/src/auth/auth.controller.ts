@@ -100,26 +100,116 @@ export class AuthController {
     return result;
   }
 
+  /**
+   * ✅ POST /api/auth/google/verify-email
+   * Verify Google user's email from verification link
+   */
+  @Post('google/verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify Google user email from verification link' })
+  async verifyGoogleEmail(
+    @Body() body: { token: string },
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    console.log('📧 Google email verification request');
+    
+    const result = await this.googleOAuthService.verifyGoogleUser(
+      body.token,
+      ip,
+      userAgent,
+    );
+    
+    // Generate JWT token for auto-login
+    const payload = { sub: result.user.id, email: result.user.email };
+    const accessToken = await this.authService['jwtService'].signAsync(payload);
+    
+    return {
+      success: true,
+      message: 'Email verified successfully',
+      access_token: accessToken,
+      user: result.user,
+    };
+  }
+
+  // ===== LEGACY ENDPOINTS (Passport-based Google OAuth) =====
+
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Login with Google (legacy)' })
+  @ApiOperation({ 
+    summary: 'Login with Google - Initiates OAuth flow',
+  })
   async googleAuth(@Req() req: Request) {
     // Initiates Google OAuth flow
+    // This is handled by GoogleAuthGuard (Passport)
   }
 
   @Get('callback/google')
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth callback (legacy)' })
+  @ApiOperation({ 
+    summary: 'Google OAuth callback - handles redirect from Google',
+  })
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     try {
-      const result = await this.authService.googleLogin((req as any).user);
-      
+      const googleUser = (req as any).user;
+      const ipAddress = req.ip;
+      const userAgent = req.headers['user-agent'];
+
+      console.log('🔄 Legacy Google OAuth callback hit');
+      console.log('👤 Google user:', googleUser);
+
+      // ✅ FIXED: Use new handleGoogleAuthPassport method for Passport flow
+      const result = await this.googleOAuthService.handleGoogleAuthPassport(
+        {
+          email: googleUser.email,
+          name: googleUser.name,
+          picture: googleUser.picture,
+          googleId: googleUser.googleId,
+        },
+        ipAddress,
+        userAgent,
+      );
+
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      return res.redirect(`${frontendUrl}/callback?token=${result.access_token}`);
+
+      // Handle different scenarios
+      if (result.status === 'no_account') {
+        // SCENARIO 2: No account exists - redirect to register page
+        console.log('❌ No account found - redirecting to register');
+        return res.redirect(
+          `${frontendUrl}/register?error=${encodeURIComponent(
+            result.message || 'Please register first'
+          )}&email=${encodeURIComponent(googleUser.email)}`
+        );
+      }
+
+      if (result.status === 'pending_verification') {
+        // SCENARIO 1: Existing user needs verification
+        console.log('📧 Verification required - redirecting to verify-email page');
+        return res.redirect(
+          `${frontendUrl}/verify-email?message=${encodeURIComponent(
+            result.message || 'Please check your email to verify your account'
+          )}&email=${encodeURIComponent(googleUser.email)}`
+        );
+      }
+
+      if (result.status === 'existing' && result.user) {
+        // User verified and logged in successfully
+        const payload = { sub: result.user.id, email: result.user.email };
+        const accessToken = await this.authService['jwtService'].signAsync(payload);
+        return res.redirect(`${frontendUrl}/callback?token=${accessToken}`);
+      }
+
+      // Handle unexpected status
+      console.error('❌ Unexpected status:', result.status);
+      return res.redirect(
+        `${frontendUrl}/login?error=${encodeURIComponent('Authentication failed')}`
+      );
     } catch (error) {
+      console.error('❌ Legacy Google OAuth error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-      return res.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(errorMessage)}`);
     }
   }
 
@@ -256,7 +346,6 @@ export class AuthController {
   ) {
     const user = (req as any).user;
 
-    // ADD THIS DEBUG LOGGING
     console.log('🔐 Backend received DTO:', {
       currentPassword: changePasswordDto.currentPassword ? `${changePasswordDto.currentPassword.length} chars` : 'MISSING',
       newPassword: changePasswordDto.newPassword ? `${changePasswordDto.newPassword.length} chars` : 'MISSING',

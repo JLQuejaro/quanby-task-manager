@@ -65,6 +65,7 @@ export declare class TasksController {
             description: string;
             id: number;
             createdAt: Date;
+            expiresAt: Date;
             title: string;
             priority: string;
             deadline: Date;
@@ -72,7 +73,6 @@ export declare class TasksController {
             userId: number;
             originalTaskId: number;
             deletedAt: Date;
-            expiresAt: Date;
             originalCreatedAt: Date;
             originalUpdatedAt: Date;
         };
@@ -112,6 +112,7 @@ export declare class TasksController {
             description: string;
             id: number;
             createdAt: Date;
+            expiresAt: Date;
             title: string;
             priority: string;
             deadline: Date;
@@ -119,7 +120,6 @@ export declare class TasksController {
             userId: number;
             originalTaskId: number;
             deletedAt: Date;
-            expiresAt: Date;
             originalCreatedAt: Date;
             originalUpdatedAt: Date;
         };

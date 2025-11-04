@@ -1,5 +1,6 @@
 import * as nodemailer from 'nodemailer';
 
+// ✅ FIXED: Changed createTransporter to createTransport
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -106,6 +107,13 @@ const emailTemplate = (content: string) => `
       color: #1e40af;
       border-left: 4px solid #4169E1;
     }
+    .warning-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px 16px;
+      margin: 24px 0;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -126,6 +134,9 @@ const emailTemplate = (content: string) => `
 </html>
 `;
 
+/**
+ * ✅ Send verification email for regular email/password registration
+ */
 export async function sendEmailVerificationEmail(
   email: string,
   token: string,
@@ -145,8 +156,8 @@ export async function sendEmailVerificationEmail(
       <div class="link-label">Or copy and paste this link in your browser:</div>
       <a href="${verificationUrl}" class="link-text">${verificationUrl}</a>
     </div>
-    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 24px 0; border-radius: 4px;">
-      ⏱️ <strong>This link expires in 1 hour.</strong>
+    <div class="warning-box">
+      ⏱️ <strong>This link expires in 24 hours.</strong>
     </div>
     <div class="security-note">
       <strong>🔒 Security Notice</strong><br>
@@ -160,8 +171,61 @@ export async function sendEmailVerificationEmail(
     subject: 'Verify Your Email - Quanby Task Manager',
     html: emailTemplate(content),
   });
+
+  console.log('✅ Regular verification email sent to:', email);
 }
 
+/**
+ * ✅ Send verification email for Google OAuth registration
+ */
+export async function sendGoogleVerificationEmail(
+  email: string,
+  token: string,
+  userName?: string,
+): Promise<void> {
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}&provider=google`;
+
+  const content = `
+    <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
+    <div class="message">
+      You signed in with <strong>Google</strong>. To complete your registration and start using Quanby Task Manager, 
+      please verify your email address:
+    </div>
+    <div style="background: #e0f2fe; border-left: 4px solid #0284c7; padding: 16px; margin: 24px 0; border-radius: 8px;">
+      <strong style="color: #075985;">🔵 Google Sign-In Detected</strong><br>
+      <span style="color: #0c4a6e; font-size: 14px;">
+        We've received a sign-in request using your Google account. Click the button below to complete your registration.
+      </span>
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${verificationUrl}" class="button">Verify Email Address</a>
+    </div>
+    <div class="link-container">
+      <div class="link-label">Or copy and paste this link in your browser:</div>
+      <a href="${verificationUrl}" class="link-text">${verificationUrl}</a>
+    </div>
+    <div class="warning-box">
+      ⏱️ <strong>This link expires in 24 hours.</strong>
+    </div>
+    <div class="security-note">
+      <strong>🔒 Security Notice</strong><br>
+      If you didn't sign in with Google, you can safely ignore this email. Your account will not be created.
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Verify Your Google Sign-In - Quanby Task Manager',
+    html: emailTemplate(content),
+  });
+
+  console.log('✅ Google verification email sent to:', email);
+}
+
+/**
+ * Send password changed confirmation email
+ */
 export async function sendPasswordChangedEmail(
   email: string,
   userName?: string,
@@ -194,8 +258,13 @@ export async function sendPasswordChangedEmail(
     subject: 'Password Changed - Quanby Task Manager',
     html: emailTemplate(content),
   });
+
+  console.log('✅ Password changed email sent to:', email);
 }
 
+/**
+ * Send password reset email
+ */
 export async function sendPasswordResetEmail(
   email: string,
   resetToken: string,
@@ -216,7 +285,7 @@ export async function sendPasswordResetEmail(
       <div class="link-label">Or copy and paste this link in your browser:</div>
       <a href="${resetUrl}" class="link-text">${resetUrl}</a>
     </div>
-    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 24px 0; border-radius: 4px;">
+    <div class="warning-box">
       ⏱️ <strong>This link expires in ${process.env.PASSWORD_RESET_TOKEN_EXPIRY || 1} hour(s).</strong>
     </div>
     <div class="security-note">
@@ -231,4 +300,6 @@ export async function sendPasswordResetEmail(
     subject: 'Reset Your Password - Quanby Task Manager',
     html: emailTemplate(content),
   });
+
+  console.log('✅ Password reset email sent to:', email);
 }

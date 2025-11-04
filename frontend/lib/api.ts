@@ -24,13 +24,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Log the error details for debugging
+      // Log the error details for debugging - FIXED: Added optional chaining
       console.error('API Error:', {
-        status: error.response.status,
-        data: error.response.data,
+        status: error.response?.status,
+        data: error.response?.data,
         url: error.config?.url,
         method: error.config?.method,
       });
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('API Error: No response received', {
+        url: error.config?.url,
+        method: error.config?.method,
+      });
+    } else {
+      // Something else happened
+      console.error('API Error:', error.message);
     }
     return Promise.reject(error);
   }

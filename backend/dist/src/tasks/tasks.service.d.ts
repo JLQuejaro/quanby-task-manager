@@ -73,6 +73,7 @@ export declare class TasksService {
             description: string;
             id: number;
             createdAt: Date;
+            expiresAt: Date;
             title: string;
             priority: string;
             deadline: Date;
@@ -80,7 +81,6 @@ export declare class TasksService {
             userId: number;
             originalTaskId: number;
             deletedAt: Date;
-            expiresAt: Date;
             originalCreatedAt: Date;
             originalUpdatedAt: Date;
         };
@@ -120,6 +120,7 @@ export declare class TasksService {
             description: string;
             id: number;
             createdAt: Date;
+            expiresAt: Date;
             title: string;
             priority: string;
             deadline: Date;
@@ -127,7 +128,6 @@ export declare class TasksService {
             userId: number;
             originalTaskId: number;
             deletedAt: Date;
-            expiresAt: Date;
             originalCreatedAt: Date;
             originalUpdatedAt: Date;
         };
