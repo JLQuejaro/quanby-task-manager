@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckSquare, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { VerifyEmailNoticePage } from '@/components/auth/VerifyEmailNoticePage';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -20,6 +21,7 @@ function VerifyEmailContent() {
   // CRITICAL FIX: Prevent multiple simultaneous verification attempts
   const verificationAttemptedRef = useRef(false);
   const isVerifyingRef = useRef(false);
+  const token = searchParams.get('token');
 
   useEffect(() => {
     // CRITICAL FIX: Only run verification once
@@ -62,27 +64,33 @@ function VerifyEmailContent() {
         const token = searchParams.get('token');
 
         if (!token) {
-          setStatus('error');
-          setErrorMessage('Invalid verification link. Token is missing.');
-          addNotification(
-            'auth_status',
-            'Verification Failed',
-            'Invalid verification link. Token is missing.',
-            undefined,
-            { action: 'email_verification_failed' }
-          );
           return;
         }
 
         console.log('🔍 Verifying email with token:', token.substring(0, 20) + '...');
         console.log('🌐 API URL:', `${API_URL}/auth/verify-email?token=${token.substring(0, 20)}...`);
 
-        const response = await fetch(`${API_URL}/auth/verify-email?token=${token}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        const provider = searchParams.get('provider');
+
+        let response: Response;
+        if (provider === 'google') {
+          // Google verification uses POST
+          response = await fetch(`${API_URL}/auth/google/verify-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token }),
+          });
+        } else {
+          // Email/password verification uses GET
+          response = await fetch(`${API_URL}/auth/verify-email?token=${token}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        }
 
         console.log('📡 Response status:', response.status);
 
@@ -177,6 +185,10 @@ function VerifyEmailContent() {
 
     verifyEmail();
   }, [searchParams, router, setUser, addNotification, user, errorMessage]);
+
+  if (!token) {
+    return <VerifyEmailNoticePage />;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">

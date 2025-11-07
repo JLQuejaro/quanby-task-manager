@@ -178,16 +178,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     taskId?: number,
     metadata?: Record<string, any>
   ) => {
-    if (!currentUserEmail) {
-      console.warn('Cannot add notification: No user logged in');
-      return;
-    }
-    // Only add to in-app notifications if it's important
-    // Skip task_created, task_updated for in-app to reduce clutter
-    const shouldAddToInApp = ![
+    // Allow toasts even when no user is logged in; only persist in-app when a user is present
+    const allowInApp = !!currentUserEmail;
+
+    // Only add to in-app notifications if it's important and a user is present
+    const shouldAddToInApp = allowInApp && ![
       'task_created',
       'task_updated'
     ].includes(type);
+
     const notification: Notification = {
       id: `${Date.now()}-${Math.random()}`,
       type,
@@ -199,11 +198,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       taskId,
       metadata
     };
-    // Only add important notifications to the in-app list
+
     if (shouldAddToInApp) {
       setNotifications(prev => [notification, ...prev]);
     }
-    // Show toast notification with icon
+
+    // Show toast notification with icon regardless of login state
     const icon = getNotificationIcon(type);
 
     if (type === 'task_created' || type === 'task_completed') {

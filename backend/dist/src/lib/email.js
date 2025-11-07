@@ -199,18 +199,22 @@ async function sendEmailVerificationEmail(email, token, userName) {
     });
     console.log('✅ Regular verification email sent to:', email);
 }
-async function sendGoogleVerificationEmail(email, token, userName) {
+async function sendGoogleVerificationEmail(email, token, userName, mode = 'register') {
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}&provider=google`;
+    const isLogin = mode === 'login';
     const content = `
     <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
     <div class="message">
-      You signed in with <strong>Google</strong>. To complete your registration and start using Quanby Task Manager, 
-      please verify your email address:
+      ${isLogin
+        ? 'You are signing in with <strong>Google</strong>. For security, please verify your email address to continue:'
+        : 'You signed in with <strong>Google</strong>. To complete your registration and start using Quanby Task Manager, please verify your email address:'}
     </div>
     <div style="background: #e0f2fe; border-left: 4px solid #0284c7; padding: 16px; margin: 24px 0; border-radius: 8px;">
       <strong style="color: #075985;">🔵 Google Sign-In Detected</strong><br>
       <span style="color: #0c4a6e; font-size: 14px;">
-        We've received a sign-in request using your Google account. Click the button below to complete your registration.
+        ${isLogin
+        ? "We've received a sign-in request using your Google account. Click the button below to confirm it's you and continue."
+        : "We've received a sign-in request using your Google account. Click the button below to complete your registration."}
       </span>
     </div>
     <div style="text-align: center; margin: 32px 0;">
@@ -225,16 +229,19 @@ async function sendGoogleVerificationEmail(email, token, userName) {
     </div>
     <div class="security-note">
       <strong>🔒 Security Notice</strong><br>
-      If you didn't sign in with Google, you can safely ignore this email. Your account will not be created.
+      If you didn't sign in with Google, you can safely ignore this email.${isLogin ? '' : ' Your account will not be created.'}
     </div>
   `;
+    const subject = isLogin
+        ? 'Verify Your Sign-In - Quanby Task Manager'
+        : 'Verify Your Google Sign-In - Quanby Task Manager';
     await transporter.sendMail({
         from: process.env.SMTP_FROM,
         to: email,
-        subject: 'Verify Your Google Sign-In - Quanby Task Manager',
+        subject,
         html: emailTemplate(content),
     });
-    console.log('✅ Google verification email sent to:', email);
+    console.log('✅ Google verification email sent to:', email, `mode=${mode}`);
 }
 async function sendPasswordChangedEmail(email, userName) {
     const content = `

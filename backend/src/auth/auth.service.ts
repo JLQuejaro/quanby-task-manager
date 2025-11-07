@@ -185,6 +185,36 @@ export class AuthService {
       });
     }
 
+    // Determine rememberMe preference (default true if not provided)
+    const rememberMe = (loginDto as any).rememberMe === undefined ? true : !!(loginDto as any).rememberMe;
+
+    // If user chose not to stay logged in, enforce email verification before proceeding
+    if (!rememberMe) {
+      try {
+        await this.emailVerificationService.resendVerificationEmail(user.id, true);
+        await this.securityLogService.log({
+          userId: user.id,
+          email: user.email,
+          eventType: 'login_verification_required',
+          success: true,
+          ipAddress,
+          userAgent,
+          metadata: { reason: 'Stay Logged In unchecked - verification enforced' },
+        });
+      } catch (err) {
+        console.error('❌ Failed to send verification email during login:', err);
+      }
+
+      await this.rateLimitService.resetRateLimit(ipAddress || 'unknown', 'login');
+
+      return {
+        status: 'verification_required',
+        message: 'Verification email sent. Please verify your email to continue.',
+        requiresAction: 'verify_email',
+        email: user.email,
+      } as any;
+    }
+
     await this.securityLogService.log({
       userId: user.id,
       email: user.email,

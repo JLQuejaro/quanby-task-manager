@@ -35,6 +35,12 @@ export declare class GoogleOAuthService {
     private handleExistingUser;
     private handlePendingRegistration;
     private handleNewUser;
+    startRegistrationFromPassport(googleData: {
+        email: string;
+        name: string;
+        picture?: string;
+        googleId: string;
+    }, ipAddress?: string, userAgent?: string): Promise<GoogleAuthResult>;
     verifyGoogleUser(token: string, ipAddress?: string, userAgent?: string): Promise<{
         success: boolean;
         email: string;

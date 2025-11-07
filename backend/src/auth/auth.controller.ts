@@ -172,12 +172,36 @@ export class AuthController {
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+      // Read flow intent from cookie or state
+      const cookies = req.headers['cookie'] || '';
+      const cookieMatch = cookies.match(/(?:^|; )oauth_flow=([^;]+)/);
+      const flowMode = cookieMatch ? decodeURIComponent(cookieMatch[1]) : (req.query['state'] as string) || 'login';
+
       // Handle different scenarios
       if (result.status === 'no_account') {
-        // SCENARIO 2: No account exists - redirect to register page
-        console.log('❌ No account found - redirecting to register');
+        // If initiated from register, create pending registration and send verification email
+        if (flowMode === 'register') {
+          console.log('🆕 No account and flow=register - creating pending Google registration');
+          const regResult = await this.googleOAuthService.startRegistrationFromPassport(
+            {
+              email: googleUser.email,
+              name: googleUser.name,
+              picture: googleUser.picture,
+              googleId: googleUser.googleId,
+            },
+            ipAddress,
+            userAgent,
+          );
+          return res.redirect(
+            `${frontendUrl}/verify-email-notice?message=${encodeURIComponent(
+              regResult.message || 'Please check your email to verify your account'
+            )}&email=${encodeURIComponent(googleUser.email)}`
+          );
+        }
+        // Otherwise inform on login page and let it redirect to register with message
+        console.log('❌ No account found - redirecting to login with message then to register');
         return res.redirect(
-          `${frontendUrl}/register?error=${encodeURIComponent(
+          `${frontendUrl}/login?error=${encodeURIComponent(
             result.message || 'Please register first'
           )}&email=${encodeURIComponent(googleUser.email)}`
         );
@@ -185,9 +209,9 @@ export class AuthController {
 
       if (result.status === 'pending_verification') {
         // SCENARIO 1: Existing user needs verification
-        console.log('📧 Verification required - redirecting to verify-email page');
+        console.log('📧 Verification required - redirecting to verify-email notice page');
         return res.redirect(
-          `${frontendUrl}/verify-email?message=${encodeURIComponent(
+          `${frontendUrl}/verify-email-notice?message=${encodeURIComponent(
             result.message || 'Please check your email to verify your account'
           )}&email=${encodeURIComponent(googleUser.email)}`
         );
@@ -286,13 +310,16 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resend verification email' })
-  async resendVerification(@Req() req: Request) {
+  @ApiOperation({ summary: 'Resend verification email (optionally force even if already verified)' })
+  async resendVerification(@Req() req: Request, @Body() body?: { force?: boolean }) {
     const user = (req as any).user;
-    await this.emailVerificationService.resendVerificationEmail(user.id);
+    const force = body?.force === true;
+
+    await this.emailVerificationService.resendVerificationEmail(user.id, force);
     
     return {
       message: 'Verification email sent. Please check your inbox.',
+      forced: force || undefined,
     };
   }
 

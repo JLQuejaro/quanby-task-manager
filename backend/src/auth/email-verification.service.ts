@@ -45,9 +45,9 @@ export class EmailVerificationService {
   /**
    * Resend verification email
    */
-  async resendVerificationEmail(userId: number): Promise<void> {
+  async resendVerificationEmail(userId: number, force: boolean = false): Promise<void> {
     try {
-      console.log(`🔄 Resending verification email for user ID: ${userId}`);
+      console.log(`🔄 Resending verification email for user ID: ${userId} ${force ? '(force)' : ''}`);
 
       // Query with snake_case only
       const userResult = await this.pool.query(
@@ -69,7 +69,7 @@ export class EmailVerificationService {
       const user = userResult.rows[0];
       console.log(`👤 Found user: ${user.email}`);
 
-      if (user.is_verified) {
+      if (user.is_verified && !force) {
         console.log(`✅ Email already verified for: ${user.email}`);
         throw new BadRequestException('Email already verified');
       }

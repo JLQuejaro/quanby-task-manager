@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (!parsedUser.emailVerified && !isPublicPath && pathname !== '/verify-email-notice') {
             console.log('⚠️ Email not verified, redirecting to notice page');
-            router.push('/verify-email-notice');
+            router.push('/verify-email');
             setIsLoading(false);
             return;
           }
@@ -239,7 +239,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { email, password } = credentials;
       
-      const response = await authApi.login(email, password);
+      const response = await authApi.login(email, password, rememberMeOption);
+
+      // If backend requires verification when rememberMe is false
+      if (response?.status === 'verification_required') {
+        addNotification(
+          'auth_status',
+          'Verification Required',
+          response.message || 'We sent you a verification email. Please verify to proceed.',
+          undefined,
+          { action: 'verify_email_required', email }
+        );
+        // Do not store token/user yet; navigate to verification notice without throwing
+        router.push('/verify-email');
+        // Resolve without error to avoid console noise in client
+        return undefined as unknown as User;
+      }
+
       localStorage.setItem('token', response.access_token);
       
       // Set remember me preference
@@ -271,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Redirect based on verification and password status
       if (!response.user.emailVerified) {
-        router.push('/verify-email-notice');
+        router.push('/verify-email');
       } else if (!hasPassword) {
         router.push('/set-password');
       } else {

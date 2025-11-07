@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 // Data structure for registration
@@ -26,4 +26,9 @@ export class LoginDto {
   @ApiProperty({ example: 'password123' })
   @IsString()
   password: string;
+
+  @ApiProperty({ example: true, required: false, description: 'Stay Logged In option' })
+  @IsOptional()
+  @IsBoolean()
+  rememberMe?: boolean;
 }

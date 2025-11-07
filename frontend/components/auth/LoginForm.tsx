@@ -74,7 +74,7 @@ export function LoginForm() {
         setNotification({
           type: 'warning',
           title: 'Account Not Found',
-          message: decodedError,
+          message: "This account doesn't exist. Please register first.",
           action: {
             label: 'Register Now',
             onClick: () => router.push(`/register?email=${encodeURIComponent(emailParam || '')}`),
@@ -129,6 +129,19 @@ export function LoginForm() {
       
     } catch (error: any) {
       console.error('❌ Login error:', error);
+
+      // Handle enforced verification flow
+      if (typeof error?.message === 'string' && error.message.toLowerCase().includes('verification')) {
+        setNotification({
+          type: 'info',
+          title: 'Verification Required',
+          message: 'We have sent a verification email. Please verify your email to continue.',
+        });
+        // Redirect to verify notice
+        router.push('/verify-email-notice');
+        setIsLoading(false);
+        return;
+      }
       
       const errorResponse = error.response?.data;
       const statusCode = errorResponse?.statusCode || error.response?.status;
@@ -140,7 +153,7 @@ export function LoginForm() {
         setNotification({
           type: 'warning',
           title: 'Account Not Found',
-          message: errorMessage,
+          message: "This account doesn't exist. Please register first.",
           action: {
             label: 'Register Now',
             onClick: () => {

@@ -495,6 +495,46 @@ export class GoogleOAuthService {
    * ✅ Verify Google user and create actual account
    * This is called when user clicks verification link
    */
+  async startRegistrationFromPassport(
+    googleData: { email: string; name: string; picture?: string; googleId: string },
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<GoogleAuthResult> {
+    // Create new temporary registration and send verification email
+    const verificationToken = this.generateSecureToken();
+    const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const registrationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.createTemporaryRegistration({
+      email: googleData.email,
+      name: googleData.name,
+      googleId: googleData.googleId,
+      googleEmail: googleData.email,
+      googleName: googleData.name,
+      googlePicture: googleData.picture,
+      verificationToken,
+      tokenExpiresAt,
+      expiresAt: registrationExpiresAt,
+    });
+
+    await sendGoogleVerificationEmail(googleData.email, verificationToken, googleData.name);
+
+    await this.securityLogService.log({
+      email: googleData.email,
+      eventType: 'google_register_pending',
+      success: true,
+      ipAddress,
+      userAgent,
+      metadata: { provider: 'google', emailVerified: false, pendingVerification: true, source: 'register_flow' },
+    });
+
+    return {
+      status: 'pending_verification',
+      message: 'Account created successfully! Please check your email to verify your account before continuing.',
+      requiresAction: 'verify_email',
+    };
+  }
+
   async verifyGoogleUser(token: string, ipAddress?: string, userAgent?: string): Promise<{
     success: boolean;
     email: string;

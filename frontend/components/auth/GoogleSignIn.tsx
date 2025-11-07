@@ -3,20 +3,25 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
-export function GoogleSignInButton() {
+export function GoogleSignInButton({ mode = 'login' }: { mode?: 'login' | 'register' }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
     
-    // FIXED: Remove /api prefix - backend routes are at /auth/google not /api/auth/google
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    // Mark flow intent via cookie (readable by backend callback without extra middleware)
+    try {
+      document.cookie = `oauth_flow=${mode}; path=/; max-age=600`;
+    } catch (e) {
+      console.warn('Failed to set oauth_flow cookie', e);
+    }
     
-    // Backend route is defined as @Controller('auth') with @Get('google')
-    // So the full path is: http://localhost:3001/auth/google
-    const googleAuthUrl = `${apiUrl}/auth/google`;
+    // Include state hint as well (may be ignored by server, cookie is primary)
+    const googleAuthUrl = `${apiUrl}/auth/google?state=${encodeURIComponent(mode)}`;
     
-    console.log('🔐 Redirecting to Google OAuth:', googleAuthUrl);
+    console.log('🔐 Redirecting to Google OAuth:', googleAuthUrl, 'mode:', mode);
     
     window.location.href = googleAuthUrl;
   };

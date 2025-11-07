@@ -371,6 +371,36 @@ let GoogleOAuthService = class GoogleOAuthService {
             requiresAction: 'verify_email',
         };
     }
+    async startRegistrationFromPassport(googleData, ipAddress, userAgent) {
+        const verificationToken = this.generateSecureToken();
+        const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const registrationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await this.createTemporaryRegistration({
+            email: googleData.email,
+            name: googleData.name,
+            googleId: googleData.googleId,
+            googleEmail: googleData.email,
+            googleName: googleData.name,
+            googlePicture: googleData.picture,
+            verificationToken,
+            tokenExpiresAt,
+            expiresAt: registrationExpiresAt,
+        });
+        await (0, email_1.sendGoogleVerificationEmail)(googleData.email, verificationToken, googleData.name);
+        await this.securityLogService.log({
+            email: googleData.email,
+            eventType: 'google_register_pending',
+            success: true,
+            ipAddress,
+            userAgent,
+            metadata: { provider: 'google', emailVerified: false, pendingVerification: true, source: 'register_flow' },
+        });
+        return {
+            status: 'pending_verification',
+            message: 'Account created successfully! Please check your email to verify your account before continuing.',
+            requiresAction: 'verify_email',
+        };
+    }
     async verifyGoogleUser(token, ipAddress, userAgent) {
         try {
             console.log('='.repeat(80));

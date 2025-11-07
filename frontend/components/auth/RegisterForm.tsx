@@ -339,7 +339,7 @@ export function RegisterForm() {
             </div>
 
             {/* Google Sign-In */}
-            <GoogleSignInButton />
+            <GoogleSignInButton mode="register" />
           </form>
 
           {/* Login Link */}

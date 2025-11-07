@@ -71,9 +71,9 @@ let EmailVerificationService = class EmailVerificationService {
             throw new common_1.BadRequestException('Failed to send verification email: ' + error.message);
         }
     }
-    async resendVerificationEmail(userId) {
+    async resendVerificationEmail(userId, force = false) {
         try {
-            console.log(`🔄 Resending verification email for user ID: ${userId}`);
+            console.log(`🔄 Resending verification email for user ID: ${userId} ${force ? '(force)' : ''}`);
             const userResult = await this.pool.query(`SELECT 
           id,
           email, 
@@ -87,7 +87,7 @@ let EmailVerificationService = class EmailVerificationService {
             }
             const user = userResult.rows[0];
             console.log(`👤 Found user: ${user.email}`);
-            if (user.is_verified) {
+            if (user.is_verified && !force) {
                 console.log(`✅ Email already verified for: ${user.email}`);
                 throw new common_1.BadRequestException('Email already verified');
             }

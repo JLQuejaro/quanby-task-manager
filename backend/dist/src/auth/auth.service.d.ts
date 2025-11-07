@@ -34,16 +34,7 @@ export declare class AuthService {
         };
         message: string;
     }>;
-    login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{
-        access_token: string;
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            authProvider: string;
-            emailVerified: boolean;
-        };
-    }>;
+    login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<any>;
     validateUser(userId: number): Promise<{
         id: number;
         email: string;

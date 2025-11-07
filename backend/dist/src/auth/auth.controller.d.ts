@@ -23,16 +23,7 @@ export declare class AuthController {
         };
         message: string;
     }>;
-    login(loginDto: LoginDto, ip: string, userAgent: string): Promise<{
-        access_token: string;
-        user: {
-            id: string;
-            email: string;
-            name: string;
-            authProvider: string;
-            emailVerified: boolean;
-        };
-    }>;
+    login(loginDto: LoginDto, ip: string, userAgent: string): Promise<any>;
     googleCallback(callbackDto: GoogleOAuthCallbackDto, ip: string, userAgent: string): Promise<import("./google-oauth.service").GoogleAuthResult>;
     verifyGoogleEmail(body: {
         token: string;
@@ -56,8 +47,11 @@ export declare class AuthController {
         access_token: string;
         user: any;
     }>;
-    resendVerification(req: Request): Promise<{
+    resendVerification(req: Request, body?: {
+        force?: boolean;
+    }): Promise<{
         message: string;
+        forced: true;
     }>;
     verificationStatus(req: Request): Promise<{
         emailVerified: boolean;
