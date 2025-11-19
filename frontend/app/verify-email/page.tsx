@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckSquare, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { VerifyEmailNoticePage } from '@/components/auth/VerifyEmailNoticePage';
+import VerifyEmailNoticePage from '@/components/auth/VerifyEmailNoticePage';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -18,20 +18,17 @@ function VerifyEmailContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
   
-  // CRITICAL FIX: Prevent multiple simultaneous verification attempts
   const verificationAttemptedRef = useRef(false);
   const isVerifyingRef = useRef(false);
   const token = searchParams.get('token');
 
   useEffect(() => {
-    // CRITICAL FIX: Only run verification once
     if (verificationAttemptedRef.current) {
       console.log('⚠️ Verification already attempted, skipping duplicate call');
       return;
     }
 
     const verifyEmail = async () => {
-      // CRITICAL FIX: Prevent concurrent requests
       if (isVerifyingRef.current) {
         console.log('⚠️ Verification already in progress, skipping');
         return;
@@ -41,7 +38,6 @@ function VerifyEmailContent() {
         isVerifyingRef.current = true;
         verificationAttemptedRef.current = true;
 
-        // Check if user is already logged in and verified
         if (user?.emailVerified) {
           console.log('✅ User already verified, redirecting to dashboard');
           setStatus('already_verified');
@@ -68,14 +64,13 @@ function VerifyEmailContent() {
         }
 
         console.log('🔍 Verifying email with token:', token.substring(0, 20) + '...');
-        console.log('🌐 API URL:', `${API_URL}/auth/verify-email?token=${token.substring(0, 20)}...`);
+        console.log('🌐 API URL:', `${API_URL}/api/auth/verify-email?token=${token.substring(0, 20)}...`);
 
         const provider = searchParams.get('provider');
 
         let response: Response;
         if (provider === 'google') {
-          // Google verification uses POST
-          response = await fetch(`${API_URL}/auth/google/verify-email`, {
+          response = await fetch(`${API_URL}/api/auth/google/verify-email`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -83,8 +78,7 @@ function VerifyEmailContent() {
             body: JSON.stringify({ token }),
           });
         } else {
-          // Email/password verification uses GET
-          response = await fetch(`${API_URL}/auth/verify-email?token=${token}`, {
+          response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -94,7 +88,6 @@ function VerifyEmailContent() {
 
         console.log('📡 Response status:', response.status);
 
-        // Try to parse response as JSON
         let data;
         try {
           data = await response.json();
@@ -108,7 +101,6 @@ function VerifyEmailContent() {
           console.error('❌ Verification failed:', data);
           const errorMsg = data.message || data.error || `Verification failed (Status: ${response.status})`;
           
-          // Special handling for "already used" tokens
           if (errorMsg.includes('already used') || errorMsg.includes('Invalid or expired')) {
             setErrorMessage('This verification link has already been used or has expired. Please login to request a new one.');
           } else {
@@ -122,7 +114,6 @@ function VerifyEmailContent() {
         console.log('👤 User data:', data.user);
         console.log('🔑 Access token received:', !!data.access_token);
 
-        // Validate response has required data
         if (!data.access_token || !data.user) {
           throw new Error('Invalid server response: missing authentication data');
         }
@@ -141,14 +132,38 @@ function VerifyEmailContent() {
         addNotification(
           'auth_status',
           'Email Verified! 🎉',
-          `Welcome ${data.user.name || data.user.email}! Redirecting to dashboard...`,
+          `Welcome ${data.user.name || data.user.email}!`,
           undefined,
           { action: 'email_verified', email: data.user.email }
         );
 
         setStatus('success');
 
-        // Auto-redirect to dashboard after 2 seconds
+        // ✅ FIXED: Check if user needs to set password (for Google users)
+        console.log('🔍 Checking if user needs to set password...');
+        console.log('👤 User auth provider:', data.user.authProvider);
+        
+        // Check if user has password
+        const hasPasswordResponse = await fetch(`${API_URL}/api/auth/has-password`, {
+          headers: {
+            'Authorization': `Bearer ${data.access_token}`,
+          },
+        });
+
+        if (hasPasswordResponse.ok) {
+          const hasPasswordData = await hasPasswordResponse.json();
+          console.log('🔑 Has password:', hasPasswordData.hasPassword);
+
+          if (!hasPasswordData.hasPassword && data.user.authProvider === 'google') {
+            console.log('⚠️ Google user without password - redirecting to set-password');
+            setTimeout(() => {
+              router.push('/set-password');
+            }, 2000);
+            return;
+          }
+        }
+
+        // Auto-redirect to dashboard if password is set
         console.log('🚀 Redirecting to dashboard in 2 seconds...');
         setTimeout(() => {
           router.push('/dashboard');
@@ -170,7 +185,6 @@ function VerifyEmailContent() {
           setErrorMessage(errorMsg);
         }
 
-        // Show error notification
         addNotification(
           'auth_status',
           'Verification Failed',
@@ -279,7 +293,7 @@ function VerifyEmailContent() {
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                     <Loader2 className="h-4 w-4 text-green-600 dark:text-green-400 animate-spin" />
                     <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                      Logging you in and redirecting to dashboard...
+                      Logging you in and redirecting...
                     </span>
                   </div>
                 </div>

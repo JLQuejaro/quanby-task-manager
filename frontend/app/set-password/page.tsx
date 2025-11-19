@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { authApi } from '@/lib/api'; // ✅ ADDED: Use authApi instead of fetch
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -113,29 +114,8 @@ export default function SetPasswordPage() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`${API_URL}/auth/set-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          password: newPassword,
-          passwordConfirm: confirmPassword 
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to set password');
-      }
+      // ✅ FIXED: Use authApi instead of fetch
+      await authApi.setPassword(newPassword, confirmPassword);
 
       addNotification(
         'auth_status',
@@ -148,7 +128,7 @@ export default function SetPasswordPage() {
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to set password. Please try again.';
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to set password. Please try again.';
       setError(errorMessage);
 
       addNotification(

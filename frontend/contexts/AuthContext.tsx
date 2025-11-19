@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('token');
       if (!token) return false;
 
-      const response = await fetch(`${API_URL}/auth/has-password`, {
+      const response = await fetch(`${API_URL}/api/auth/has-password`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -94,18 +94,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             sessionStorage.setItem('session_active', 'true');
           }
           
-          // Check email verification status first
+          // ✅ FIXED: Simplified redirect logic
           const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
           
-          if (!parsedUser.emailVerified && !isPublicPath && pathname !== '/verify-email-notice') {
-            console.log('⚠️ Email not verified, redirecting to notice page');
-            router.push('/verify-email');
-            setIsLoading(false);
-            return;
-          }
-          
-          // Then redirect to password setup if needed
-          if (parsedUser.emailVerified && !hasPassword && !isPublicPath && pathname !== '/set-password') {
+          // Only redirect to set-password if user doesn't have password AND not already on a public path
+          if (!hasPassword && !isPublicPath && pathname !== '/set-password') {
             console.log('⚠️ Password not set, redirecting to setup page');
             router.push('/set-password');
           }
@@ -241,21 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const response = await authApi.login(email, password, rememberMeOption);
 
-      // If backend requires verification when rememberMe is false
-      if (response?.status === 'verification_required') {
-        addNotification(
-          'auth_status',
-          'Verification Required',
-          response.message || 'We sent you a verification email. Please verify to proceed.',
-          undefined,
-          { action: 'verify_email_required', email }
-        );
-        // Do not store token/user yet; navigate to verification notice without throwing
-        router.push('/verify-email');
-        // Resolve without error to avoid console noise in client
-        return undefined as unknown as User;
-      }
-
+      // ✅ REMOVED: Verification required check (manual login should work directly)
+      
       localStorage.setItem('token', response.access_token);
       
       // Set remember me preference
@@ -276,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('💾 Remember Me:', rememberMeOption ? 'Enabled' : 'Disabled');
       console.log('📧 Email verified:', response.user.emailVerified);
       
-      // FIXED: Only show notification for successful login
+      // Show success notification
       addNotification(
         'auth_status',
         'Welcome Back!',
@@ -285,20 +265,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { action: 'login', email: response.user.email }
       );
       
-      // Redirect based on verification and password status
-      if (!response.user.emailVerified) {
-        router.push('/verify-email');
-      } else if (!hasPassword) {
-        router.push('/set-password');
-      } else {
-        router.push('/dashboard');
-      }
+      // ✅ FIXED: Redirect to dashboard directly (no email verification check for manual login)
+      router.push('/dashboard');
       
       return userData;
     } catch (error: any) {
       console.error('❌ Login error:', error);
       
-      // FIXED: Only show notification for failed login
       addNotification(
         'auth_status',
         'Login Failed',
@@ -311,7 +284,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // FIXED: Removed logout notification
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

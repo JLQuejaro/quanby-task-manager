@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { authApi } from '@/lib/api';
 
-export function VerifyEmailNoticePage() {
+export default function VerifyEmailNoticePage() {
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const { user } = useAuth();
@@ -17,23 +18,14 @@ export function VerifyEmailNoticePage() {
     setResendSuccess(false);
 
     try {
+      // ✅ FIXED: Check if user is logged in before attempting resend
       const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-      const response = await fetch(`${apiUrl}/auth/resend-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ force: true }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend verification email');
+      
+      if (!token) {
+        throw new Error('You must be logged in to resend verification email. Please log in first.');
       }
+
+      await authApi.resendVerification();
 
       setResendSuccess(true);
       addNotification(
@@ -46,10 +38,22 @@ export function VerifyEmailNoticePage() {
 
     } catch (error: any) {
       console.error('Resend verification error:', error);
+      
+      // ✅ IMPROVED: Better error handling
+      let errorMessage = 'Failed to resend verification email';
+      
+      if (error.response?.status === 401) {
+        errorMessage = 'You must be logged in to resend verification email. Please log in first.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       addNotification(
         'resend_failed',
         'Failed to Send',
-        error.message || 'Failed to resend verification email',
+        errorMessage,
         undefined,
         { action: 'resend_verification_failed' }
       );
@@ -74,7 +78,7 @@ export function VerifyEmailNoticePage() {
 
           {/* Message */}
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            We've sent a verification email to <strong className="text-gray-900 dark:text-white">{user?.email}</strong>.
+            We've sent a verification email to <strong className="text-gray-900 dark:text-white">{user?.email || 'your email'}</strong>.
             Please check your inbox and click the verification link to activate your account.
           </p>
 

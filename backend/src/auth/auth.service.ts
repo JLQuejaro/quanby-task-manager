@@ -27,7 +27,6 @@ export class AuthService {
     });
   }
 
-  // FIXED: Proper email existence check
   async findByEmail(email: string) {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || null;
@@ -36,7 +35,6 @@ export class AuthService {
   async register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string) {
     await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'register');
 
-    // FIXED: Check if user already exists with detailed error
     const existingUser = await this.findByEmail(registerDto.email);
     
     if (existingUser) {
@@ -51,7 +49,6 @@ export class AuthService {
 
       console.log('❌ Registration failed: Email already exists:', registerDto.email);
       
-      // FIXED: Use ConflictException with clear message
       throw new ConflictException({
         statusCode: 409,
         message: 'This email is already registered. Please login instead or use a different email.',
@@ -114,7 +111,7 @@ export class AuthService {
   async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
     await this.rateLimitService.checkRateLimit(ipAddress || 'unknown', 'login');
 
-    // FIXED: Check if user exists with detailed error
+    // ✅ FIXED: Check if user exists
     const user = await this.findByEmail(loginDto.email);
     
     if (!user) {
@@ -129,7 +126,6 @@ export class AuthService {
 
       console.log('❌ Login failed: User not found:', loginDto.email);
       
-      // FIXED: Use NotFoundException with clear message
       throw new NotFoundException({
         statusCode: 404,
         message: 'No account found with this email. Please register first.',
@@ -139,6 +135,7 @@ export class AuthService {
       });
     }
 
+    // ✅ FIXED: Check if user has password set
     if (!user.password) {
       await this.securityLogService.log({
         userId: user.id,
@@ -161,6 +158,7 @@ export class AuthService {
       });
     }
 
+    // ✅ FIXED: Validate password
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
     
     if (!isPasswordValid) {
@@ -185,36 +183,9 @@ export class AuthService {
       });
     }
 
-    // Determine rememberMe preference (default true if not provided)
-    const rememberMe = (loginDto as any).rememberMe === undefined ? true : !!(loginDto as any).rememberMe;
-
-    // If user chose not to stay logged in, enforce email verification before proceeding
-    if (!rememberMe) {
-      try {
-        await this.emailVerificationService.resendVerificationEmail(user.id, true);
-        await this.securityLogService.log({
-          userId: user.id,
-          email: user.email,
-          eventType: 'login_verification_required',
-          success: true,
-          ipAddress,
-          userAgent,
-          metadata: { reason: 'Stay Logged In unchecked - verification enforced' },
-        });
-      } catch (err) {
-        console.error('❌ Failed to send verification email during login:', err);
-      }
-
-      await this.rateLimitService.resetRateLimit(ipAddress || 'unknown', 'login');
-
-      return {
-        status: 'verification_required',
-        message: 'Verification email sent. Please verify your email to continue.',
-        requiresAction: 'verify_email',
-        email: user.email,
-      } as any;
-    }
-
+    // ✅ FIXED: Manual email/password login should work without verification requirement
+    // Only enforce verification if rememberMe is false (removed this logic)
+    
     await this.securityLogService.log({
       userId: user.id,
       email: user.email,
@@ -244,11 +215,6 @@ export class AuthService {
       },
     };
   }
-
-  // ❌ REMOVED: googleLogin() method
-  // This method was creating users directly in the users table,
-  // bypassing the temporary_registrations flow.
-  // Use googleOAuthService.handleGoogleAuth() instead.
 
   async validateUser(userId: number) {
     const [user] = await db.select().from(users).where(eq(users.id, userId));

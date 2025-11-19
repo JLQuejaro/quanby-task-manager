@@ -1,10 +1,12 @@
+// frontend/lib/api.ts
+
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Create axios instance with interceptor for auth token
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api`, // ✅ FIXED: Added /api prefix
 });
 
 // Add token to requests - with browser check

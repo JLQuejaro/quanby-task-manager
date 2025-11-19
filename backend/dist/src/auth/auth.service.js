@@ -186,31 +186,6 @@ let AuthService = class AuthService {
                 email: user.email,
             });
         }
-        const rememberMe = loginDto.rememberMe === undefined ? true : !!loginDto.rememberMe;
-        if (!rememberMe) {
-            try {
-                await this.emailVerificationService.resendVerificationEmail(user.id, true);
-                await this.securityLogService.log({
-                    userId: user.id,
-                    email: user.email,
-                    eventType: 'login_verification_required',
-                    success: true,
-                    ipAddress,
-                    userAgent,
-                    metadata: { reason: 'Stay Logged In unchecked - verification enforced' },
-                });
-            }
-            catch (err) {
-                console.error('❌ Failed to send verification email during login:', err);
-            }
-            await this.rateLimitService.resetRateLimit(ipAddress || 'unknown', 'login');
-            return {
-                status: 'verification_required',
-                message: 'Verification email sent. Please verify your email to continue.',
-                requiresAction: 'verify_email',
-                email: user.email,
-            };
-        }
         await this.securityLogService.log({
             userId: user.id,
             email: user.email,
