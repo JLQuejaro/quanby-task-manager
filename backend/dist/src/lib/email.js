@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendEmailVerificationEmail = sendEmailVerificationEmail;
 exports.sendGoogleVerificationEmail = sendGoogleVerificationEmail;
+exports.sendPasswordSetEmail = sendPasswordSetEmail;
 exports.sendPasswordChangedEmail = sendPasswordChangedEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 const nodemailer = __importStar(require("nodemailer"));
@@ -242,6 +243,42 @@ async function sendGoogleVerificationEmail(email, token, userName, mode = 'regis
         html: emailTemplate(content),
     });
     console.log('✅ Google verification email sent to:', email, `mode=${mode}`);
+}
+async function sendPasswordSetEmail(email, userName) {
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const content = `
+    <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
+    <div class="message">
+      Great news! You've successfully set a password for your Quanby Task Manager account.
+    </div>
+    <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0; border-radius: 8px;">
+      <strong style="color: #065f46;">✅ Password Set Successfully</strong><br>
+      <span style="color: #047857; font-size: 14px;">
+        You can now log in with your email and password at any time.
+      </span>
+    </div>
+    <div class="message">
+      Your password was set at ${new Date().toLocaleString()}. You can now use either:
+    </div>
+    <ul style="color: #4b5563; margin: 16px 0; padding-left: 24px;">
+      <li style="margin-bottom: 8px;"><strong>Email & Password</strong> - Your new local credentials</li>
+      <li><strong>Google Sign-In</strong> - Continue using your Google account</li>
+    </ul>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${loginUrl}" class="button">Go to Login</a>
+    </div>
+    <div class="security-note" style="background: #eff6ff; border-left: 4px solid #4169E1; color: #1e40af;">
+      <strong>🔒 Security Tip</strong><br>
+      Keep your password secure and don't share it with anyone. If you didn't set this password, please contact our support team immediately.
+    </div>
+  `;
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM,
+        to: email,
+        subject: 'Password Set Successfully - Quanby Task Manager',
+        html: emailTemplate(content),
+    });
+    console.log('✅ Password set confirmation email sent to:', email);
 }
 async function sendPasswordChangedEmail(email, userName) {
     const content = `

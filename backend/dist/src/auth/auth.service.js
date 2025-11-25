@@ -257,7 +257,7 @@ let AuthService = class AuthService {
             ipAddress,
             userAgent,
         });
-        await (0, email_1.sendPasswordChangedEmail)(user.email, user.name);
+        await (0, email_1.sendPasswordSetEmail)(user.email, user.name);
         console.log('✅ Password set for user ID:', userId);
         return {
             message: 'Password set successfully. You can now login with email and password.',

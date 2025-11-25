@@ -10,7 +10,8 @@ import { RegisterDto, LoginDto } from './dto/register.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { SecurityLogService } from './security-log.service';
 import { RateLimitService } from './rate-limit.service';
-import { sendPasswordChangedEmail } from '../lib/email';
+// ✅ FIXED: Import both email functions
+import { sendPasswordChangedEmail, sendPasswordSetEmail } from '../lib/email';
 
 @Injectable()
 export class AuthService {
@@ -278,7 +279,8 @@ export class AuthService {
       userAgent,
     });
 
-    await sendPasswordChangedEmail(user.email, user.name);
+    // ✅ FIXED: Use sendPasswordSetEmail instead of sendPasswordChangedEmail
+    await sendPasswordSetEmail(user.email, user.name);
     
     console.log('✅ Password set for user ID:', userId);
     return { 
@@ -382,6 +384,7 @@ export class AuthService {
 
     await this.rateLimitService.resetRateLimit(`user_${userId}`, 'password_change');
 
+    // ✅ This correctly uses sendPasswordChangedEmail (for changing existing password)
     await sendPasswordChangedEmail(user.email, user.name);
     
     console.log('✅ Password changed for user ID:', userId);
