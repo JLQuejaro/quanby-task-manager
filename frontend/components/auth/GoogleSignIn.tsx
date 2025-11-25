@@ -18,8 +18,8 @@ export function GoogleSignInButton({ mode = 'login' }: { mode?: 'login' | 'regis
       console.warn('Failed to set oauth_flow cookie', e);
     }
     
-    // Include state hint as well (may be ignored by server, cookie is primary)
-    const googleAuthUrl = `${apiUrl}/auth/google?state=${encodeURIComponent(mode)}`;
+    // ✅ FIXED: Added /api prefix to match backend routes
+    const googleAuthUrl = `${apiUrl}/api/auth/google?state=${encodeURIComponent(mode)}`;
     
     console.log('🔐 Redirecting to Google OAuth:', googleAuthUrl, 'mode:', mode);
     

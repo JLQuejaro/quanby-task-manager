@@ -1,218 +1,89 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { CheckSquare, Mail, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function VerifyEmailNoticePage() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState('');
-  const [cooldown, setCooldown] = useState(0);
+  const searchParams = useSearchParams();
+  const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    // FIXED: Changed isEmailVerified to emailVerified
-    if (user?.emailVerified) {
-      console.log('✅ Email already verified, redirecting to set-password or dashboard');
-      router.push('/set-password');
+    const urlMessage = searchParams.get('message');
+    const urlEmail = searchParams.get('email');
+
+    if (urlMessage) {
+      setMessage(decodeURIComponent(urlMessage));
+    } else {
+      setMessage('Please check your email to verify your account');
     }
 
-    // If no user is logged in, redirect to login
-    if (!user) {
-      console.log('⚠️ No user found, redirecting to login');
-      router.push('/login');
+    if (urlEmail) {
+      setEmail(decodeURIComponent(urlEmail));
     }
-  }, [user, router]);
-
-  const handleResendVerification = async () => {
-    if (cooldown > 0 || isResending) {
-      console.log('⏱️ Cooldown active or already sending');
-      return;
-    }
-
-    setIsResending(true);
-    setResendMessage('');
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        setResendMessage('❌ Please login to resend verification email.');
-        setIsResending(false);
-        return;
-      }
-
-      console.log('📤 Resending verification email...');
-
-      const response = await fetch(`${apiUrl}/auth/resend-verification`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        console.log('✅ Verification email sent successfully');
-        setResendMessage('✅ Verification email sent! Check your inbox.');
-        
-        // Start 2-minute cooldown
-        setCooldown(120);
-        const interval = setInterval(() => {
-          setCooldown((prev) => {
-            if (prev <= 1) {
-              clearInterval(interval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        const data = await response.json();
-        console.warn('⚠️ Resend throttled:', data.message);
-        setResendMessage(`⚠️ ${data.message || 'Failed to resend email.'}`);
-      }
-    } catch (error) {
-      console.error('❌ Resend verification error:', error);
-      setResendMessage('❌ Failed to resend verification email.');
-    } finally {
-      setIsResending(false);
-    }
-  };
-
-  // FIXED: Use logout from AuthContext instead of manual logout
-  const handleLogout = () => {
-    console.log('👋 Logging out from verify-email-notice page');
-    logout();
-  };
-
-  const formatCooldown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Don't render if no user (waiting for redirect)
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#4169E1] border-t-transparent"></div>
-      </div>
-    );
-  }
+  }, [searchParams]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
-      {/* Theme Toggle Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="absolute top-4 right-4 rounded-xl"
-      >
-        {theme === 'dark' ? (
-          <Sun className="h-5 w-5" />
-        ) : (
-          <Moon className="h-5 w-5" />
-        )}
-      </Button>
-
-      <div className="w-full max-w-md space-y-8">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#4169E1]">
-            <CheckSquare className="h-7 w-7 text-white" strokeWidth={2.5} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+        <div className="text-center">
+          {/* Email Icon */}
+          <div className="mx-auto h-16 w-16 text-blue-600 mb-4">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quanby</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Task Manager</p>
-          </div>
-        </div>
 
-        {/* Verification Notice Card */}
-        <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="text-center space-y-4">
-            {/* Mail Icon */}
-            <div className="flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Mail className="h-8 w-8 text-[#4169E1]" />
-              </div>
-            </div>
+          {/* Title */}
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Check Your Email
+          </h2>
 
-            {/* Title */}
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Verify Your Email
-            </h2>
+          {/* Message */}
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            {message}
+          </p>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <p className="text-gray-600 dark:text-gray-400">
-                We've sent a verification email to
-              </p>
-              <p className="font-medium text-gray-900 dark:text-white break-all">
-                {user?.email}
-              </p>
-            </div>
-
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              Please check your inbox and click the verification link to activate your account.
+          {/* Email Display */}
+          {email && (
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-6">
+              {email}
             </p>
+          )}
 
-            {/* Resend Message */}
-            {resendMessage && (
-              <div className={`p-3 rounded-lg text-sm ${
-                resendMessage.includes('✅') 
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800' 
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
-              }`}>
-                <p>{resendMessage}</p>
-              </div>
-            )}
-
-            {/* Resend Button with Cooldown */}
-            <Button
-              onClick={handleResendVerification}
-              disabled={isResending || cooldown > 0}
-              className="w-full h-11 bg-[#4169E1] hover:bg-[#3558CC] disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-xl transition flex items-center justify-center gap-2"
-            >
-              {isResending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : cooldown > 0 ? (
-                `Resend in ${formatCooldown(cooldown)}`
-              ) : (
-                'Resend Verification Email'
-              )}
-            </Button>
-
-            {/* Logout Button */}
-            <Button
-              onClick={handleLogout}
-              variant="ghost"
-              className="w-full h-11 font-medium rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            >
-              Logout
-            </Button>
+          {/* Instructions */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+              <strong>Next steps:</strong>
+            </p>
+            <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
+              <li>Open your email inbox</li>
+              <li>Look for our verification email</li>
+              <li>Click the verification link</li>
+              <li>You'll be automatically logged in</li>
+            </ol>
           </div>
-        </div>
 
-        {/* Help Text */}
-        <div className="space-y-2">
-          <p className="text-center text-xs text-gray-500 dark:text-gray-500">
-            Didn't receive the email? Check your spam folder or click resend above.
-          </p>
-          <p className="text-center text-xs text-gray-500 dark:text-gray-500">
-            After verifying your email, you'll be redirected to set up your password.
-          </p>
+          {/* Troubleshooting */}
+          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+            <p>Didn't receive the email?</p>
+            <ul className="space-y-1">
+              <li>• Check your spam/junk folder</li>
+              <li>• Make sure you entered the correct email</li>
+              <li>• Wait a few minutes and refresh your inbox</li>
+            </ul>
+          </div>
+
+          {/* Back to Login */}
+          <div className="mt-8">
+            <Link 
+              href="/login"
+              className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              ← Back to Login
+            </Link>
+          </div>
         </div>
       </div>
     </div>
