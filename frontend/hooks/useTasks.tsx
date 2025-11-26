@@ -82,14 +82,14 @@ export function useTasks() {
   });
 
   const toggleCompleteMutation = useMutation({
-    mutationFn: ({ id, completed }: { id: number; completed: boolean }) =>
-      tasksApi.toggleComplete(id, completed),
-    onSuccess: (updatedTask, { completed }) => {
+    mutationFn: (id: number) => tasksApi.toggleComplete(id),
+    onSuccess: (updatedTask) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      const isCompleted = updatedTask.completed;
       addNotification(
         'task_completed',
-        completed ? 'Task Completed' : 'Task Reopened',
-        completed
+        isCompleted ? 'Task Completed' : 'Task Reopened',
+        isCompleted
           ? `"${updatedTask.title}" has been marked as complete`
           : `"${updatedTask.title}" has been reopened`,
         updatedTask.id
@@ -105,8 +105,8 @@ export function useTasks() {
     },
   });
 
-  const toggleComplete = (id: number, completed: boolean) => {
-    toggleCompleteMutation.mutate({ id, completed });
+  const toggleComplete = (id: number) => {
+    toggleCompleteMutation.mutate(id);
   };
 
   const softDeleteTask = (id: number) => {
