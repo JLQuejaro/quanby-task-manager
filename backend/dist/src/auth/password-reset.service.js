@@ -101,6 +101,9 @@ let PasswordResetService = class PasswordResetService {
          WHERE id = $2`, [hashedPassword, tokenData.user_id]);
             await this.markTokenAsUsed(hashedToken);
             await this.revokeAllUserSessions(tokenData.user_id);
+            await (0, email_1.sendPasswordResetSuccessEmail)(tokenData.email, tokenData.name).catch(err => {
+                console.error('Failed to send password reset success email:', err);
+            });
             console.log(`✅ Password reset successful for user ID: ${tokenData.user_id}`);
             return {
                 message: 'Password reset successful. You can now log in with your new password.',

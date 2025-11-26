@@ -21,6 +21,7 @@ import { LogoutDialog } from '@/components/settings/dialogs/LogoutDialog';
 import { RestoreTaskDialog } from '@/components/settings/dialogs/RestoreTaskDialog';
 import { DeleteTaskDialog } from '@/components/settings/dialogs/DeleteTaskDialog';
 import { ClearArchiveDialog } from '@/components/settings/dialogs/ClearArchiveDialog';
+import { DeleteAccountDialog } from '@/components/settings/dialogs/DeleteAccountDialog';
 
 // Import types
 import { ArchivedTask, NotificationPreferences } from '@/components/settings/types';
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState<{ id: string; title: string } | null>(null);
 
   // Notification preferences
@@ -288,22 +290,25 @@ export default function SettingsPage() {
 
   // Delete account handler
   const handleDeleteAccount = () => {
-    const confirmed = window.confirm(
-      '⚠️ WARNING: This will permanently delete your account and all data. This action cannot be undone. Are you absolutely sure?'
-    );
-    if (confirmed) {
-      const doubleConfirm = window.confirm(
-        'This is your last chance. Click OK to confirm account deletion.'
+    setShowDeleteAccountDialog(true);
+  };
+
+  const confirmDeleteAccount = async (password: string) => {
+    try {
+      await authApi.deleteAccount(password);
+      addNotification(
+        'auth_status',
+        'Account Deleted',
+        'Your account has been permanently deleted.',
+        undefined,
+        { action: 'account_deleted' }
       );
-      if (doubleConfirm) {
-        addNotification(
-          'auth_status',
-          'Account Deletion',
-          'Account deletion is not yet implemented. Contact support for assistance.',
-          undefined,
-          { action: 'delete_account_requested' }
-        );
-      }
+      // Redirect to login or home
+      logout(); // This clears local storage and redirects
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      // Re-throw to be caught by dialog's error handling
+      throw new Error(error.response?.data?.message || 'Failed to delete account');
     }
   };
 
@@ -391,6 +396,13 @@ export default function SettingsPage() {
         onOpenChange={setShowClearAllDialog}
         onConfirm={confirmClearAll}
         taskCount={archivedTasks.length}
+      />
+
+      <DeleteAccountDialog
+        open={showDeleteAccountDialog}
+        onOpenChange={setShowDeleteAccountDialog}
+        onConfirm={confirmDeleteAccount}
+        hasPassword={hasPassword}
       />
     </div>
   );

@@ -214,6 +214,18 @@ export const authApi = {
       throw error;
     }
   },
+
+  deleteAccount: async (password?: string) => {
+    try {
+      const response = await api.delete('/auth/account', {
+        data: { password } // DELETE requests send body in 'data' property
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Delete account error:', error);
+      throw error;
+    }
+  },
 };
 
 // Tasks API

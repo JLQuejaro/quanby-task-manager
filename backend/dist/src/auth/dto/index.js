@@ -21,4 +21,5 @@ __exportStar(require("./verify-email.dto"), exports);
 __exportStar(require("./change-password.dto"), exports);
 __exportStar(require("./set-password.dto"), exports);
 __exportStar(require("./google-oauth-callback.dto"), exports);
+__exportStar(require("./delete-account.dto"), exports);
 //# sourceMappingURL=index.js.map

@@ -11,7 +11,7 @@ import { EmailVerificationService } from './email-verification.service';
 import { SecurityLogService } from './security-log.service';
 import { RateLimitService } from './rate-limit.service';
 // ✅ FIXED: Import both email functions
-import { sendPasswordChangedEmail, sendPasswordSetEmail } from '../lib/email';
+import { sendPasswordChangedEmail, sendPasswordSetEmail, sendFailedAccountDeletionEmail } from '../lib/email';
 
 @Injectable()
 export class AuthService {
@@ -392,6 +392,66 @@ export class AuthService {
     return { 
       message: 'Password changed successfully. All other sessions have been logged out.',
     };
+  }
+
+  async deleteAccount(
+    userId: number,
+    password?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    console.log('🗑️ deleteAccount called for user:', userId);
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // If user has a password, verify it
+    if (user.password && user.password.length > 0) {
+      if (!password) {
+        throw new BadRequestException('Password is required to delete account');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        await this.securityLogService.log({
+          userId,
+          email: user.email,
+          eventType: 'account_deletion_failed',
+          success: false,
+          ipAddress,
+          userAgent,
+          metadata: { reason: 'Invalid password' },
+        });
+        
+        // Send alert email
+        await sendFailedAccountDeletionEmail(user.email, user.name).catch(err => {
+            console.error('Failed to send account deletion alert email:', err);
+        });
+
+        throw new UnauthorizedException('Incorrect password');
+      }
+    }
+
+    try {
+      // Delete sessions
+      await this.pool.query('DELETE FROM active_sessions WHERE user_id = $1', [userId]);
+      
+      // Delete security logs
+      await this.pool.query('DELETE FROM security_logs WHERE user_id = $1', [userId]);
+
+      // Delete user (cascades to tasks, archived_tasks)
+      await db.delete(users).where(eq(users.id, userId));
+
+      console.log('✅ Account deleted for user:', userId);
+
+      return { message: 'Account permanently deleted' };
+    } catch (error) {
+      console.error('❌ Error deleting account:', error);
+      throw new Error('Failed to delete account');
+    }
   }
 
   private validatePasswordStrength(password: string): void {

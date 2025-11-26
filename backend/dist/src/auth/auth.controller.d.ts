@@ -4,7 +4,7 @@ import { GoogleOAuthService } from './google-oauth.service';
 import { EmailVerificationService } from './email-verification.service';
 import { PasswordResetService } from './password-reset.service';
 import { RateLimitService } from './rate-limit.service';
-import { RegisterDto, LoginDto, ChangePasswordDto, SetPasswordDto, GoogleOAuthCallbackDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto';
+import { RegisterDto, LoginDto, ChangePasswordDto, SetPasswordDto, GoogleOAuthCallbackDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto, DeleteAccountDto } from './dto';
 export declare class AuthController {
     private authService;
     private googleOAuthService;
@@ -79,6 +79,9 @@ export declare class AuthController {
         message: string;
     }>;
     resetPassword(resetPasswordDto: ResetPasswordDto, ip: string): Promise<{
+        message: string;
+    }>;
+    deleteAccount(req: Request, deleteAccountDto: DeleteAccountDto, ip: string, userAgent: string): Promise<{
         message: string;
     }>;
     getProfile(req: Request): Promise<any>;

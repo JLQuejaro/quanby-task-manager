@@ -206,6 +206,10 @@ let AuthController = class AuthController {
         await this.rateLimitService.resetRateLimit(ip, 'password_reset');
         return result;
     }
+    async deleteAccount(req, deleteAccountDto, ip, userAgent) {
+        const user = req.user;
+        return this.authService.deleteAccount(user.id, deleteAccountDto.password, ip, userAgent);
+    }
     async getProfile(req) {
         const user = req.user;
         const isVerified = await this.emailVerificationService.isEmailVerified(user.id);
@@ -388,6 +392,20 @@ __decorate([
     __metadata("design:paramtypes", [dto_1.ResetPasswordDto, String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Delete)('account'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete account' }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Headers)('user-agent')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, dto_1.DeleteAccountDto, String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "deleteAccount", null);
 __decorate([
     (0, common_1.Get)('profile'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

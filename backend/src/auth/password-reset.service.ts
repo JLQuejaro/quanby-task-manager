@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/
 import { Pool } from 'pg';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { sendPasswordResetEmail } from '../lib/email';
+import { sendPasswordResetEmail, sendPasswordResetSuccessEmail } from '../lib/email';
 
 @Injectable()
 export class PasswordResetService {
@@ -98,6 +98,11 @@ export class PasswordResetService {
 
       // Revoke all active sessions for security
       await this.revokeAllUserSessions(tokenData.user_id);
+
+      // Send confirmation email
+      await sendPasswordResetSuccessEmail(tokenData.email, tokenData.name).catch(err => {
+        console.error('Failed to send password reset success email:', err);
+      });
 
       console.log(`✅ Password reset successful for user ID: ${tokenData.user_id}`);
 

@@ -2,6 +2,7 @@ import {
   Controller, 
   Get, 
   Post, 
+  Delete,
   Body, 
   UseGuards, 
   Req, 
@@ -30,6 +31,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  DeleteAccountDto,
 } from './dto';
 import { GoogleAuthGuard } from './google-auth.guard';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -430,6 +432,26 @@ export class AuthController {
     await this.rateLimitService.resetRateLimit(ip, 'password_reset');
 
     return result;
+  }
+
+  @Delete('account')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete account' })
+  async deleteAccount(
+    @Req() req: Request,
+    @Body() deleteAccountDto: DeleteAccountDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    const user = (req as any).user;
+    return this.authService.deleteAccount(
+      user.id,
+      deleteAccountDto.password,
+      ip,
+      userAgent,
+    );
   }
 
   // ===== USER INFO ENDPOINTS =====

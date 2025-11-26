@@ -359,3 +359,89 @@ export async function sendPasswordResetEmail(
 
   console.log('✅ Password reset email sent to:', email);
 }
+
+/**
+ * Send failed account deletion attempt email
+ */
+export async function sendFailedAccountDeletionEmail(
+  email: string,
+  userName?: string,
+): Promise<void> {
+  const resetUrl = `${process.env.FRONTEND_URL}/forgot-password`;
+  const time = new Date().toLocaleString();
+
+  const content = `
+    <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
+    <div class="message">
+      We noticed an attempt to delete your Quanby Task Manager account on <strong>${time}</strong>.
+    </div>
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 8px;">
+      <strong style="color: #991b1b;">⚠️ Failed Deletion Attempt</strong><br>
+      <span style="color: #b91c1c; font-size: 14px;">
+        The attempt failed because the password provided was incorrect.
+      </span>
+    </div>
+    <div class="message">
+      <strong>If this was you:</strong> Please try again with the correct password.
+    </div>
+    <div class="message">
+      <strong>If this wasn't you:</strong> Someone might be trying to access or delete your account. We recommend changing your password immediately to secure your account.
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${resetUrl}" class="button" style="background-color: #ef4444;">Reset Password</a>
+    </div>
+    <div class="security-note" style="background: #fff1f2; border-left: 4px solid #e11d48; color: #be123c;">
+      <strong>🔒 Security Alert</strong><br>
+      If you suspect unauthorized access, please contact our support team immediately.
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: '⚠️ Failed Account Deletion Attempt - Quanby Task Manager',
+    html: emailTemplate(content),
+  });
+
+  console.log('✅ Failed account deletion email sent to:', email);
+}
+
+/**
+ * Send password reset success email
+ */
+export async function sendPasswordResetSuccessEmail(
+  email: string,
+  userName?: string,
+): Promise<void> {
+  const loginUrl = `${process.env.FRONTEND_URL}/login`;
+  const time = new Date().toLocaleString();
+
+  const content = `
+    <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
+    <div class="message">
+      Your password has been successfully reset.
+    </div>
+    <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0; border-radius: 8px;">
+      <strong style="color: #065f46;">✅ Password Reset Complete</strong><br>
+      <span style="color: #047857; font-size: 14px;">
+        Your password was updated at ${time}. You can now log in with your new password.
+      </span>
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${loginUrl}" class="button">Go to Login</a>
+    </div>
+    <div class="security-note" style="background: #eff6ff; border-left: 4px solid #4169E1; color: #1e40af;">
+      <strong>🔒 Security Notice</strong><br>
+      If you did not perform this password reset, please contact our support team immediately.
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Password Reset Successful - Quanby Task Manager',
+    html: emailTemplate(content),
+  });
+
+  console.log('✅ Password reset success email sent to:', email);
+}

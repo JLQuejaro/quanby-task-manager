@@ -5,3 +5,4 @@ export * from './verify-email.dto';
 export * from './change-password.dto';
 export * from './set-password.dto';
 export * from './google-oauth-callback.dto';
+export * from './delete-account.dto';

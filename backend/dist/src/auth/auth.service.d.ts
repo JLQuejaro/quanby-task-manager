@@ -73,6 +73,9 @@ export declare class AuthService {
     changePassword(userId: number, currentPassword: string, newPassword: string, confirmPassword: string, ipAddress?: string, userAgent?: string): Promise<{
         message: string;
     }>;
+    deleteAccount(userId: number, password?: string, ipAddress?: string, userAgent?: string): Promise<{
+        message: string;
+    }>;
     private validatePasswordStrength;
     private createSession;
     private revokeAllUserSessions;

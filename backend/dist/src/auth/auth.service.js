@@ -340,6 +340,45 @@ let AuthService = class AuthService {
             message: 'Password changed successfully. All other sessions have been logged out.',
         };
     }
+    async deleteAccount(userId, password, ipAddress, userAgent) {
+        console.log('🗑️ deleteAccount called for user:', userId);
+        const [user] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (user.password && user.password.length > 0) {
+            if (!password) {
+                throw new common_1.BadRequestException('Password is required to delete account');
+            }
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                await this.securityLogService.log({
+                    userId,
+                    email: user.email,
+                    eventType: 'account_deletion_failed',
+                    success: false,
+                    ipAddress,
+                    userAgent,
+                    metadata: { reason: 'Invalid password' },
+                });
+                await (0, email_1.sendFailedAccountDeletionEmail)(user.email, user.name).catch(err => {
+                    console.error('Failed to send account deletion alert email:', err);
+                });
+                throw new common_1.UnauthorizedException('Incorrect password');
+            }
+        }
+        try {
+            await this.pool.query('DELETE FROM active_sessions WHERE user_id = $1', [userId]);
+            await this.pool.query('DELETE FROM security_logs WHERE user_id = $1', [userId]);
+            await db_1.db.delete(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            console.log('✅ Account deleted for user:', userId);
+            return { message: 'Account permanently deleted' };
+        }
+        catch (error) {
+            console.error('❌ Error deleting account:', error);
+            throw new Error('Failed to delete account');
+        }
+    }
     validatePasswordStrength(password) {
         if (!password || typeof password !== 'string') {
             throw new common_1.BadRequestException('Password is required');
