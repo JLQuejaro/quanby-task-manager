@@ -28,7 +28,8 @@ export function useTasks() {
       addNotification(
         'task_created',
         'Error',
-        error.response?.data?.message || 'Failed to create task'
+        error.response?.data?.message || 'Failed to create task',
+        undefined
       );
     },
   });
@@ -49,7 +50,8 @@ export function useTasks() {
       addNotification(
         'task_updated',
         'Error',
-        error.response?.data?.message || 'Failed to update task'
+        error.response?.data?.message || 'Failed to update task',
+        undefined
       );
     },
   });
@@ -60,7 +62,7 @@ export function useTasks() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       // Remove notification in localhost/development environment
       if (process.env.NODE_ENV !== 'development') {
-        const task = tasks.find(t => t.id === id);
+        const task = tasks.find((t: Task) => t.id === id);
         addNotification(
           'task_deleted',
           'Task Deleted',
@@ -73,7 +75,8 @@ export function useTasks() {
       addNotification(
         'task_deleted',
         'Error',
-        error.response?.data?.message || 'Failed to delete task'
+        error.response?.data?.message || 'Failed to delete task',
+        undefined
       );
     },
   });
@@ -96,7 +99,8 @@ export function useTasks() {
       addNotification(
         'task_completed',
         'Error',
-        error.response?.data?.message || 'Failed to update task'
+        error.response?.data?.message || 'Failed to update task',
+        undefined
       );
     },
   });
@@ -106,7 +110,7 @@ export function useTasks() {
   };
 
   const softDeleteTask = (id: number) => {
-    const taskToDelete = tasks.find(t => t.id === id);
+    const taskToDelete = tasks.find((t: Task) => t.id === id);
     if (!taskToDelete) return;
 
     updateMutation.mutate({
@@ -141,7 +145,7 @@ export function useTasks() {
       const now = new Date();
       const notifiedKey = 'notified_tasks';
       const notified = JSON.parse(localStorage.getItem(notifiedKey) || '{}');
-      tasks.forEach(task => {
+      tasks.forEach((task: Task) => {
         if (task.completed || !task.deadline || task.isDeleted) return;
         const deadline = new Date(task.deadline);
         const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);

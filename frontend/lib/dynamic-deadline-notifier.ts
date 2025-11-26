@@ -84,7 +84,7 @@ export class DynamicDeadlineNotifier {
     // High urgency: 30min - 2 hours
     if (minutesUntilDue <= 120) {
       return {
-        intervalMinutes: 0, // Milestone based for < 60
+        intervalMinutes: 30, // Fixed: Was 0, causing spam for tasks due in 1-2 hours
         displayDuration: 2000, // 2 seconds
         urgencyLevel: 'high'
       };
@@ -193,6 +193,12 @@ export class DynamicDeadlineNotifier {
       return; 
     }
 
+    // SPAM MODE: Notification every check if due in <= 10 minutes
+    if (minutesUntilDue <= 10) {
+        this.checkSpamNotification(task, minutesUntilDue, now);
+        return;
+    }
+
     // Logic for Urgent Tasks (<= 60 minutes)
     if (minutesUntilDue <= 60) {
         this.checkMilestoneNotification(task, minutesUntilDue, now);
@@ -201,6 +207,32 @@ export class DynamicDeadlineNotifier {
 
     // Logic for Standard Tasks (> 60 minutes)
     this.checkStandardNotification(task, minutesUntilDue, now);
+  }
+
+  private checkSpamNotification(task: Task, minutesUntilDue: number, now: number) {
+    const lastRecord = this.lastNotifications.get(task.id);
+    
+    // Debounce: Ensure we don't spam faster than once every 5 seconds
+    if (lastRecord && (now - lastRecord.lastNotifiedAt) < 5000) {
+        return;
+    }
+
+    const message = this.formatMessage(minutesUntilDue, task.title);
+    
+    this.notifyCallback(
+        'deadline_reminder', 
+        'Deadline Imminent', 
+        message, 
+        task.id, 
+        3000
+    );
+    
+    this.lastNotifications.set(task.id, {
+        taskId: task.id,
+        lastNotifiedAt: now,
+        urgencyLevel: 'critical',
+        lastMilestone: Math.floor(minutesUntilDue)
+    });
   }
 
   private checkMilestoneNotification(task: Task, minutesUntilDue: number, now: number) {
