@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 
 export function useTasks() {
   const queryClient = useQueryClient();
-  const { addNotification } = useNotifications();
+  const { addNotification, updateMonitoredTasks } = useNotifications();
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['tasks'],
     queryFn: tasksApi.getAll,
@@ -138,56 +138,22 @@ export function useTasks() {
     }
   };
 
-  // Deadline reminders and overdue tasks
+  // Sync tasks with the global Dynamic Deadline Notifier
   useEffect(() => {
-    if (!tasks.length) return;
-    const checkDeadlines = () => {
-      const now = new Date();
-      const notifiedKey = 'notified_tasks';
-      const notified = JSON.parse(localStorage.getItem(notifiedKey) || '{}');
-      tasks.forEach((task: Task) => {
-        if (task.completed || !task.deadline || task.isDeleted) return;
-        const deadline = new Date(task.deadline);
-        const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
-        const taskKey = `${task.id}_${task.deadline}`;
+    if (!tasks) return;
+    
+    // Map the API tasks to the format expected by the notifier
+    // The notifier expects: id, title, dueDate (mapped from deadline), completed, priority
+    const monitoredTasks = tasks.map((t: Task) => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.deadline,
+      completed: t.completed,
+      priority: t.priority
+    }));
 
-        // 24-hour reminder
-        if (hoursUntilDeadline > 0 && hoursUntilDeadline <= 24) {
-          if (!notified[`reminder_${taskKey}`]) {
-            addNotification(
-              'deadline_reminder',
-              'Deadline Approaching',
-              `"${task.title}" is due in ${Math.round(hoursUntilDeadline)} hours`,
-              task.id,
-              { hoursRemaining: Math.round(hoursUntilDeadline) }
-            );
-            notified[`reminder_${taskKey}`] = Date.now();
-            localStorage.setItem(notifiedKey, JSON.stringify(notified));
-          }
-        }
-
-        // Overdue alert
-        if (hoursUntilDeadline < 0) {
-          if (!notified[`overdue_${taskKey}`]) {
-            const hoursOverdue = Math.abs(Math.round(hoursUntilDeadline));
-            addNotification(
-              'overdue_alert',
-              'Task Overdue',
-              `"${task.title}" is ${hoursOverdue} hour${hoursOverdue !== 1 ? 's' : ''} overdue`,
-              task.id,
-              { hoursOverdue }
-            );
-            notified[`overdue_${taskKey}`] = Date.now();
-            localStorage.setItem(notifiedKey, JSON.stringify(notified));
-          }
-        }
-      });
-    };
-
-    checkDeadlines();
-    const interval = setInterval(checkDeadlines, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [tasks, addNotification]);
+    updateMonitoredTasks(monitoredTasks);
+  }, [tasks, updateMonitoredTasks]);
 
   return {
     tasks,

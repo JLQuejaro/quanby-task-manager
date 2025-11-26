@@ -140,43 +140,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [currentUserEmail]);
 
-  // Initialize the dynamic deadline notifier
-  useEffect(() => {
-    if (!notifierRef.current) {
-      notifierRef.current = new DynamicDeadlineNotifier(
-        (type, title, message, taskId, displayDuration) => {
-          // Check preferences before notifying
-          if (currentUserEmail) {
-            const prefs = getPreferences(currentUserEmail);
-            
-            // Check Task Reminders preference
-            if (type === 'deadline_reminder' && !prefs.taskReminders) {
-              return;
-            }
-            
-            // Check Deadline Alerts preference
-            if (type === 'overdue_alert' && !prefs.deadlineAlerts) {
-              return;
-            }
-          }
-
-          // Add to in-app notifications (addNotification handles toast preference check)
-          addNotification(type, title, message, taskId, { displayDuration });
-        }
-      );
-    }
-  }, [addNotification, currentUserEmail]); // Re-create notifier if user changes to ensure prefs are fresh? 
-  // Actually notifier is a ref, so we shouldn't re-create it. But the callback captures scope. 
-  // We should probably update the callback or let the callback read ref/state.
-  // Since `addNotification` is a dependency and changes with `currentUserEmail`, 
-  // and we use `currentUserEmail` inside the callback, we should re-instantiate or update the callback.
-  // However, `notifierRef.current` is only created ONCE. The closure will capture the INITIAL `addNotification` and `currentUserEmail`.
-  // This is a BUG in the original code too if `addNotification` changes.
-  // BUT `addNotification` depends on `currentUserEmail`.
-  // We should assign the callback to the notifier instance if it supports it, or use a ref for the callback.
-  // DynamicDeadlineNotifier takes callback in constructor.
-  
-  // FIX: Use a ref for addNotification and currentUserEmail so the stable callback can access current values
+  // Refs for callback dependencies to avoid stale closures
+  // Moved here because addNotification must be defined first
   const addNotificationRef = useRef(addNotification);
   const currentUserEmailRef = useRef(currentUserEmail);
 
@@ -184,12 +149,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     addNotificationRef.current = addNotification;
     currentUserEmailRef.current = currentUserEmail;
   }, [addNotification, currentUserEmail]);
-
-  // Re-initialize notifier to use refs (or just fix the callback to use refs)
-  // Since we can't easily change the callback in the class without a setter, let's re-create it if strictly needed,
-  // OR just make the callback use the refs.
-  // The `useEffect` above with `!notifierRef.current` only runs once.
-  // So we MUST use refs inside the callback.
 
   // Initialize the dynamic deadline notifier
   useEffect(() => {
