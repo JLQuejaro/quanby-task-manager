@@ -191,6 +191,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // The `useEffect` above with `!notifierRef.current` only runs once.
   // So we MUST use refs inside the callback.
 
+  // Initialize the dynamic deadline notifier
   useEffect(() => {
     if (!notifierRef.current) {
       notifierRef.current = new DynamicDeadlineNotifier(
@@ -215,17 +216,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
           // Add to in-app notifications (addNotification handles toast preference check)
           notify(type, title, message, taskId, { displayDuration });
+          
+          // Save notifier history to prevent re-sending notifications on refresh
+          if (notifierRef.current && email) {
+             try {
+               const history = notifierRef.current.getHistory();
+               const key = `deadline_notifier_history_${email}`;
+               localStorage.setItem(key, JSON.stringify(history));
+             } catch (e) {
+               console.error('Failed to save notifier history:', e);
+             }
+          }
         }
       );
     }
   }, []); // Run once, use refs for dependencies
 
-  // Load notifications when user email changes
+  // Load notifications AND notifier history when user email changes
   useEffect(() => {
     if (!currentUserEmail) {
       setNotifications([]);
+      // Clear notifier history if user logs out
+      if (notifierRef.current) {
+        notifierRef.current.restoreHistory([]); // Clear by restoring empty
+      }
       return;
     }
+    
+    // 1. Load User Notifications
     const storageKey = getStorageKey(currentUserEmail);
     if (storageKey) {
       const stored = localStorage.getItem(storageKey);
@@ -240,9 +258,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           console.error('Failed to load notifications:', e);
           setNotifications([]);
         }
-      } else {
+      }
+    } else {
         setNotifications([]);
       }
+
+    // 2. Load Notifier History
+    const historyKey = `deadline_notifier_history_${currentUserEmail}`;
+    const storedHistory = localStorage.getItem(historyKey);
+    if (storedHistory && notifierRef.current) {
+       try {
+         const history = JSON.parse(storedHistory);
+         notifierRef.current.restoreHistory(history);
+       } catch(e) {
+         console.error('Failed to load notifier history:', e);
+       }
     }
   }, [currentUserEmail]);
 
@@ -251,11 +281,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (!currentUserEmail) return;
     const storageKey = getStorageKey(currentUserEmail);
     if (storageKey) {
-      if (notifications.length > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(notifications));
-      } else {
-        localStorage.removeItem(storageKey);
-      }
+      localStorage.setItem(storageKey, JSON.stringify(notifications));
     }
   }, [notifications, currentUserEmail]);
 

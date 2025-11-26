@@ -32,7 +32,7 @@ interface NotificationTiming {
   urgencyLevel: 'low' | 'medium' | 'high' | 'critical';
 }
 
-interface LastNotificationRecord {
+export interface LastNotificationRecord {
   taskId: number;
   lastNotifiedAt: number; // timestamp
   urgencyLevel: string;
@@ -65,6 +65,24 @@ export class DynamicDeadlineNotifier {
     ) => void
   ) {
     this.notifyCallback = notifyCallback;
+  }
+
+  /**
+   * Get the current notification history
+   * Useful for persisting state to localStorage
+   */
+  public getHistory(): LastNotificationRecord[] {
+    return Array.from(this.lastNotifications.values());
+  }
+
+  /**
+   * Restore notification history
+   * Useful for loading state from localStorage
+   */
+  public restoreHistory(history: LastNotificationRecord[]): void {
+    history.forEach(record => {
+      this.lastNotifications.set(record.taskId, record);
+    });
   }
 
   /**
@@ -219,6 +237,14 @@ export class DynamicDeadlineNotifier {
 
     const message = this.formatMessage(minutesUntilDue, task.title);
     
+    // Update state BEFORE notifying
+    this.lastNotifications.set(task.id, {
+        taskId: task.id,
+        lastNotifiedAt: now,
+        urgencyLevel: 'critical',
+        lastMilestone: Math.floor(minutesUntilDue)
+    });
+
     this.notifyCallback(
         'deadline_reminder', 
         'Deadline Imminent', 
@@ -226,13 +252,6 @@ export class DynamicDeadlineNotifier {
         task.id, 
         3000
     );
-    
-    this.lastNotifications.set(task.id, {
-        taskId: task.id,
-        lastNotifiedAt: now,
-        urgencyLevel: 'critical',
-        lastMilestone: Math.floor(minutesUntilDue)
-    });
   }
 
   private checkMilestoneNotification(task: Task, minutesUntilDue: number, now: number) {
@@ -255,14 +274,15 @@ export class DynamicDeadlineNotifier {
         // Critical (<=10 mins): 2.5s, High: 2s
         const displayDuration = minutesUntilDue <= 10 ? 2500 : 2000;
 
-        this.notifyCallback(type, 'Deadline Approaching', message, task.id, displayDuration);
-        
+        // Update state BEFORE notifying
         this.lastNotifications.set(task.id, {
             taskId: task.id,
             lastNotifiedAt: now,
             urgencyLevel,
             lastMilestone: milestone
         });
+
+        this.notifyCallback(type, 'Deadline Approaching', message, task.id, displayDuration);
     }
   }
 
@@ -286,14 +306,15 @@ export class DynamicDeadlineNotifier {
     const type: NotificationType = 'overdue_alert';
     const displayDuration = 3000; // 3 seconds for the big "It's Overdue" alert
 
-    this.notifyCallback(type, 'Task Overdue', message, task.id, displayDuration);
-    
+    // Update state BEFORE notifying
     this.lastNotifications.set(task.id, {
         taskId: task.id,
         lastNotifiedAt: now,
         urgencyLevel: 'overdue_notified',
         lastMilestone: -1
     });
+
+    this.notifyCallback(type, 'Task Overdue', message, task.id, displayDuration);
   }
 
   private formatOverdueTime(minutes: number): string {
@@ -313,6 +334,14 @@ export class DynamicDeadlineNotifier {
     const message = this.formatMessage(minutesUntilDue, task.title);
     const notificationType = this.getNotificationType(timing.urgencyLevel);
 
+    // Update state BEFORE notifying
+    this.lastNotifications.set(task.id, {
+      taskId: task.id,
+      lastNotifiedAt: now,
+      urgencyLevel: timing.urgencyLevel,
+      lastMilestone: Infinity // Reset milestone tracking if we go back to standard (e.g. date changed)
+    });
+
     this.notifyCallback(
       notificationType,
       'Task Deadline Reminder',
@@ -320,13 +349,6 @@ export class DynamicDeadlineNotifier {
       task.id,
       timing.displayDuration
     );
-
-    this.lastNotifications.set(task.id, {
-      taskId: task.id,
-      lastNotifiedAt: now,
-      urgencyLevel: timing.urgencyLevel,
-      lastMilestone: Infinity // Reset milestone tracking if we go back to standard (e.g. date changed)
-    });
   }
 
   private shouldNotifyStandard(taskId: number, requiredIntervalMinutes: number, currentUrgency: string, now: number): boolean {
