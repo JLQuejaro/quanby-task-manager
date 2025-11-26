@@ -40,7 +40,7 @@ interface LastNotificationRecord {
 }
 
 // Specific milestones for notifications (in minutes)
-const URGENT_MILESTONES = [60, 45, 30, 20, 10, 5, 3, 2, 1];
+const URGENT_MILESTONES = [60, 50, 40, 30, 20, 10, 5, 3, 2, 1];
 
 export class DynamicDeadlineNotifier {
   // Store last notification times to prevent duplicates
@@ -236,46 +236,18 @@ export class DynamicDeadlineNotifier {
   }
 
   private checkMilestoneNotification(task: Task, minutesUntilDue: number, now: number) {
-    // Find the applicable milestone (the largest milestone that we have passed or are at)
-    // e.g., if 25 mins, applicable is 30 (if we want to notify "under 30") or 20 (next)?
-    // User wants: 60, 45, 30...
-    // If time is 55, we should have notified for 60.
-    // If time is 25, we should have notified for 30.
+    // Find the smallest milestone that is >= minutesUntilDue
+    // URGENT_MILESTONES is descending [60, 50, 40, 30, ...]
+    // We reverse it to find the first match (smallest) that satisfies the condition
+    const milestone = [...URGENT_MILESTONES].reverse().find(m => minutesUntilDue <= m);
     
-    // We iterate to find the smallest milestone that is >= minutesUntilDue.
-    // Wait, if we are at 25, we want to ensure we notified for 30.
-    // But if we *just* crossed 30 (e.g. 29.9), we notify.
-    // If we are way past 30 (e.g. 25), and haven't notified for 30, should we?
-    // Yes, effectively catching up, but the message will say "Due in 25 mins".
-    
-    // Find the smallest milestone M such that minutesUntilDue <= M
-    // Example: 59 mins. Milestones: ..., 60. M=60.
-    // Example: 25 mins. Milestones: ..., 30, ... M=30.
-    
-    // We want to trigger if we haven't triggered for this M yet.
-    
-    let applicableMilestone = 0;
-    // milestones are sorted descending: 60, 45, 30, ...
-    // We want the smallest one that is >= minutesUntilDue.
-    // Actually, we want to trigger for the *highest* priority milestone we've reached.
-    // If minutesUntilDue is 25, we are "under 30". The milestone is 30.
-    
-    // Let's try: Find the first milestone (descending) where minutesUntilDue <= milestone.
-    // e.g. 59 <= 60. Found 60.
-    // e.g. 25 <= 30. Found 30.
-    // e.g. 4 <= 5. Found 5.
-    
-    const milestone = URGENT_MILESTONES.find(m => minutesUntilDue <= m);
-    
-    if (!milestone) return; // Should not happen if < 60 and 60 is in milestones
+    if (!milestone) return;
 
     const lastRecord = this.lastNotifications.get(task.id);
     const lastMilestone = lastRecord?.lastMilestone || Infinity;
 
-    // If we are in a new milestone bracket (e.g., dropped from >60 to <=60, or >30 to <=30)
-    // We check if the current milestone is *smaller* than the last notified one.
-    // e.g. Last notified was 60. Current is 45 (minutesUntilDue=44). 45 < 60. Notify.
-    
+    // Notify if we've crossed into a new milestone bracket (e.g. passed 50, so now <= 50)
+    // and we haven't notified for this milestone yet (milestone < lastMilestone)
     if (milestone < lastMilestone) {
         const urgencyLevel = minutesUntilDue <= 30 ? 'critical' : 'high';
         const message = this.formatMessage(minutesUntilDue, task.title);
