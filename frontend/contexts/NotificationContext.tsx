@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Notification, NotificationType } from '@/lib/notification';
 import { DynamicDeadlineNotifier, Task } from '@/lib/dynamic-deadline-notifier';
+import { NotificationPreferences } from '@/components/settings/types';
 import toast from 'react-hot-toast';
 import { CheckCircle2, AlertCircle, Info, Trash2, Bell, LogIn } from 'lucide-react';
 
@@ -37,6 +38,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return `notifications_${userEmail}`;
   };
 
+  // Helper: Get notification preferences
+  const getPreferences = (userEmail: string): NotificationPreferences => {
+    try {
+      const key = `notification_preferences_${userEmail}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load notification preferences:', e);
+    }
+    // Default preferences
+    return {
+      emailNotifications: true,
+      pushNotifications: true,
+      taskReminders: true,
+      deadlineAlerts: true,
+    };
+  };
+
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
       case 'task_created':
@@ -64,25 +85,140 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  const addNotification = useCallback((
+    type: NotificationType,
+    title: string,
+    message: string,
+    taskId?: number,
+    metadata?: Record<string, any>
+  ) => {
+    // Allow toasts even when no user is logged in; only persist in-app when a user is present
+    const allowInApp = !!currentUserEmail;
+
+    // Get preferences if user is logged in
+    const prefs = currentUserEmail ? getPreferences(currentUserEmail) : { pushNotifications: true };
+
+    // Only add to in-app notifications if it's important and a user is present
+    const shouldAddToInApp = allowInApp && ![
+      'task_created',
+      'task_updated'
+    ].includes(type);
+
+    const notification: Notification = {
+      id: `${Date.now()}-${Math.random()}`,
+      type,
+      title,
+      message,
+      channel: ['toast', 'in_app'],
+      read: false,
+      createdAt: new Date(),
+      taskId,
+      metadata
+    };
+
+    if (shouldAddToInApp) {
+      setNotifications(prev => [notification, ...prev]);
+    }
+
+    // Check if push notifications (toasts) are enabled
+    if (prefs.pushNotifications) {
+      // Show toast notification with icon regardless of login state
+      const icon = getNotificationIcon(type);
+      const duration = metadata?.displayDuration || (['overdue_alert', 'deadline_reminder'].includes(type) ? 2500 : 2000);
+
+      if (type === 'task_created' || type === 'task_completed') {
+        toast.success(message, { icon, duration: 1500 });
+      } else if (type === 'task_deleted') {
+        toast.error(message, { icon, duration: 1500 });
+      } else if (type === 'overdue_alert') {
+        toast.error(message, { icon, duration });
+      } else if (type === 'deadline_reminder') {
+        toast(message, { icon, duration });
+      } else {
+        toast(message, { icon, duration });
+      }
+    }
+  }, [currentUserEmail]);
+
   // Initialize the dynamic deadline notifier
   useEffect(() => {
     if (!notifierRef.current) {
       notifierRef.current = new DynamicDeadlineNotifier(
         (type, title, message, taskId, displayDuration) => {
-          // Add to in-app notifications (only for important deadline reminders)
-          addNotification(type, title, message, taskId);
-
-          // Show toast with custom duration
-          const icon = getNotificationIcon(type);
-          if (type === 'overdue_alert') {
-            toast.error(message, { icon, duration: displayDuration });
-          } else {
-            toast(message, { icon, duration: displayDuration });
+          // Check preferences before notifying
+          if (currentUserEmail) {
+            const prefs = getPreferences(currentUserEmail);
+            
+            // Check Task Reminders preference
+            if (type === 'deadline_reminder' && !prefs.taskReminders) {
+              return;
+            }
+            
+            // Check Deadline Alerts preference
+            if (type === 'overdue_alert' && !prefs.deadlineAlerts) {
+              return;
+            }
           }
+
+          // Add to in-app notifications (addNotification handles toast preference check)
+          addNotification(type, title, message, taskId, { displayDuration });
         }
       );
     }
-  }, []);
+  }, [addNotification, currentUserEmail]); // Re-create notifier if user changes to ensure prefs are fresh? 
+  // Actually notifier is a ref, so we shouldn't re-create it. But the callback captures scope. 
+  // We should probably update the callback or let the callback read ref/state.
+  // Since `addNotification` is a dependency and changes with `currentUserEmail`, 
+  // and we use `currentUserEmail` inside the callback, we should re-instantiate or update the callback.
+  // However, `notifierRef.current` is only created ONCE. The closure will capture the INITIAL `addNotification` and `currentUserEmail`.
+  // This is a BUG in the original code too if `addNotification` changes.
+  // BUT `addNotification` depends on `currentUserEmail`.
+  // We should assign the callback to the notifier instance if it supports it, or use a ref for the callback.
+  // DynamicDeadlineNotifier takes callback in constructor.
+  
+  // FIX: Use a ref for addNotification and currentUserEmail so the stable callback can access current values
+  const addNotificationRef = useRef(addNotification);
+  const currentUserEmailRef = useRef(currentUserEmail);
+
+  useEffect(() => {
+    addNotificationRef.current = addNotification;
+    currentUserEmailRef.current = currentUserEmail;
+  }, [addNotification, currentUserEmail]);
+
+  // Re-initialize notifier to use refs (or just fix the callback to use refs)
+  // Since we can't easily change the callback in the class without a setter, let's re-create it if strictly needed,
+  // OR just make the callback use the refs.
+  // The `useEffect` above with `!notifierRef.current` only runs once.
+  // So we MUST use refs inside the callback.
+
+  useEffect(() => {
+    if (!notifierRef.current) {
+      notifierRef.current = new DynamicDeadlineNotifier(
+        (type, title, message, taskId, displayDuration) => {
+          const email = currentUserEmailRef.current;
+          const notify = addNotificationRef.current;
+
+          // Check preferences before notifying
+          if (email) {
+            const prefs = getPreferences(email);
+            
+            // Check Task Reminders preference
+            if (type === 'deadline_reminder' && !prefs.taskReminders) {
+              return;
+            }
+            
+            // Check Deadline Alerts preference
+            if (type === 'overdue_alert' && !prefs.deadlineAlerts) {
+              return;
+            }
+          }
+
+          // Add to in-app notifications (addNotification handles toast preference check)
+          notify(type, title, message, taskId, { displayDuration });
+        }
+      );
+    }
+  }, []); // Run once, use refs for dependencies
 
   // Load notifications when user email changes
   useEffect(() => {
@@ -170,54 +306,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     };
   }, [monitoredTasks, currentUserEmail]);
-
-  const addNotification = useCallback((
-    type: NotificationType,
-    title: string,
-    message: string,
-    taskId?: number,
-    metadata?: Record<string, any>
-  ) => {
-    // Allow toasts even when no user is logged in; only persist in-app when a user is present
-    const allowInApp = !!currentUserEmail;
-
-    // Only add to in-app notifications if it's important and a user is present
-    const shouldAddToInApp = allowInApp && ![
-      'task_created',
-      'task_updated'
-    ].includes(type);
-
-    const notification: Notification = {
-      id: `${Date.now()}-${Math.random()}`,
-      type,
-      title,
-      message,
-      channel: ['toast', 'in_app'],
-      read: false,
-      createdAt: new Date(),
-      taskId,
-      metadata
-    };
-
-    if (shouldAddToInApp) {
-      setNotifications(prev => [notification, ...prev]);
-    }
-
-    // Show toast notification with icon regardless of login state
-    const icon = getNotificationIcon(type);
-
-    if (type === 'task_created' || type === 'task_completed') {
-      toast.success(message, { icon, duration: 1500 });
-    } else if (type === 'task_deleted') {
-      toast.error(message, { icon, duration: 1500 });
-    } else if (type === 'overdue_alert') {
-      toast.error(message, { icon, duration: 2500 });
-    } else if (type === 'deadline_reminder') {
-      toast(message, { icon, duration: 2000 });
-    } else {
-      toast(message, { icon, duration: 2000 });
-    }
-  }, [currentUserEmail]);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>
