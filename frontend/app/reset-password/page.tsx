@@ -1,12 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Lock, Eye, EyeOff, CheckCircle2, CheckSquare, AlertCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle2, CheckSquare, AlertCircle, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authApi } from '@/lib/api';
+
+interface PasswordValidation {
+  isValid: boolean;
+  requirements: {
+    minLength: boolean;
+    hasUppercase: boolean;
+    hasLowercase: boolean;
+    hasNumber: boolean;
+    hasSpecial: boolean;
+    noSpaces: boolean;
+  };
+}
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState('');
@@ -17,6 +29,17 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
+    isValid: false,
+    requirements: {
+      minLength: false,
+      hasUppercase: false,
+      hasLowercase: false,
+      hasNumber: false,
+      hasSpecial: false,
+      noSpaces: false,
+    },
+  });
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -28,13 +51,38 @@ export default function ResetPasswordPage() {
     }
   }, []);
 
-  const validatePassword = (pwd: string) => {
-    if (pwd.length < 8) return 'Password must be at least 8 characters';
-    if (!/[A-Z]/.test(pwd)) return 'Password must contain an uppercase letter';
-    if (!/[a-z]/.test(pwd)) return 'Password must contain a lowercase letter';
-    if (!/[0-9]/.test(pwd)) return 'Password must contain a number';
-    return '';
+  const validatePassword = (pwd: string): PasswordValidation => {
+    const requirements = {
+      minLength: pwd.length >= 8,
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasLowercase: /[a-z]/.test(pwd),
+      hasNumber: /[0-9]/.test(pwd),
+      hasSpecial: /[!@#$%^&*]/.test(pwd),
+      noSpaces: !/\s/.test(pwd),
+    };
+
+    const isValid = Object.values(requirements).every(Boolean);
+
+    return { isValid, requirements };
   };
+
+  useEffect(() => {
+    if (newPassword) {
+      setPasswordValidation(validatePassword(newPassword));
+    } else {
+      setPasswordValidation({
+        isValid: false,
+        requirements: {
+          minLength: false,
+          hasUppercase: false,
+          hasLowercase: false,
+          hasNumber: false,
+          hasSpecial: false,
+          noSpaces: false,
+        },
+      });
+    }
+  }, [newPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +93,8 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    const validation = validatePassword(newPassword);
-    if (validation) {
-      setError(validation);
+    if (!passwordValidation.isValid) {
+      setError('Please meet all password requirements');
       return;
     }
 
@@ -192,15 +239,111 @@ export default function ResetPasswordPage() {
             </div>
 
             {/* Password Requirements */}
-            <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-              <p className="font-medium mb-2">Password must contain:</p>
-              <ul className="space-y-1 ml-4 list-disc">
-                <li>At least 8 characters</li>
-                <li>One uppercase letter</li>
-                <li>One lowercase letter</li>
-                <li>One number</li>
-              </ul>
-            </div>
+            {newPassword && (
+              <div className="mt-3 p-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 space-y-2">
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Password Requirements:
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.minLength ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.minLength
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      Minimum of 8 characters
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.hasUppercase ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.hasUppercase
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      At least one uppercase letter (A–Z)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.hasLowercase ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.hasLowercase
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      At least one lowercase letter (a–z)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.hasNumber ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.hasNumber
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      At least one number (0–9)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.hasSpecial ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.hasSpecial
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      At least one special symbol (! @ # $ % ^ & *)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordValidation.requirements.noSpaces ? (
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-xs ${
+                        passwordValidation.requirements.noSpaces
+                          ? 'text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      No spaces allowed
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <Button
