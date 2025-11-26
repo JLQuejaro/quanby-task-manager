@@ -207,15 +207,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const icon = getNotificationIcon(type);
 
     if (type === 'task_created' || type === 'task_completed') {
-      toast.success(message, { icon, duration: 3000 });
+      toast.success(message, { icon, duration: 1500 });
     } else if (type === 'task_deleted') {
-      toast.error(message, { icon, duration: 3000 });
+      toast.error(message, { icon, duration: 1500 });
     } else if (type === 'overdue_alert') {
-      toast.error(message, { icon, duration: 4000 });
+      toast.error(message, { icon, duration: 2500 });
     } else if (type === 'deadline_reminder') {
-      toast(message, { icon, duration: 4000 });
+      toast(message, { icon, duration: 2000 });
     } else {
-      toast(message, { icon, duration: 3000 });
+      toast(message, { icon, duration: 2000 });
     }
   }, [currentUserEmail]);
 

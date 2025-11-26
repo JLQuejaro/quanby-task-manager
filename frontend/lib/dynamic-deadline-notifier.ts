@@ -76,7 +76,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 30) {
       return {
         intervalMinutes: 0, // Milestone based
-        displayDuration: 5000, // 5 seconds - critical
+        displayDuration: 2500, // 2.5 seconds - critical but snappy
         urgencyLevel: 'critical'
       };
     }
@@ -85,7 +85,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 120) {
       return {
         intervalMinutes: 0, // Milestone based for < 60
-        displayDuration: 4000, // 4 seconds
+        displayDuration: 2000, // 2 seconds
         urgencyLevel: 'high'
       };
     }
@@ -94,7 +94,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 360) {
       return {
         intervalMinutes: 30,
-        displayDuration: 3000, // 3 seconds
+        displayDuration: 1500, // 1.5 seconds
         urgencyLevel: 'medium'
       };
     }
@@ -103,7 +103,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 1440) {
       return {
         intervalMinutes: 150, // 2.5 hours
-        displayDuration: 2500, // 2.5 seconds
+        displayDuration: 1500, // 1.5 seconds
         urgencyLevel: 'medium'
       };
     }
@@ -112,7 +112,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 10080) {
       return {
         intervalMinutes: 480, // 8 hours
-        displayDuration: 2000, // 2 seconds
+        displayDuration: 1500, // 1.5 seconds
         urgencyLevel: 'low'
       };
     }
@@ -249,7 +249,8 @@ export class DynamicDeadlineNotifier {
         const urgencyLevel = minutesUntilDue <= 30 ? 'critical' : 'high';
         const message = this.formatMessage(minutesUntilDue, task.title);
         const type = this.getNotificationType(urgencyLevel);
-        const displayDuration = minutesUntilDue <= 10 ? 5000 : 4000;
+        // Critical (<=10 mins): 2.5s, High: 2s
+        const displayDuration = minutesUntilDue <= 10 ? 2500 : 2000;
 
         this.notifyCallback(type, 'Deadline Approaching', message, task.id, displayDuration);
         
