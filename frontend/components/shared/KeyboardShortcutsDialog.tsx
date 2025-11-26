@@ -27,7 +27,6 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       title: 'Task Management',
       shortcuts: [
         { keys: ['N'], description: 'New Task' },
-        // Removed Edit, Delete, Toggle Complete - these are handled via UI buttons
       ],
     },
     {
@@ -35,10 +34,11 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       shortcuts: [
         { keys: ['/'], description: 'Search' },
         { keys: ['1'], description: 'All Tasks' },
-        { keys: ['2'], description: 'Today' },
-        { keys: ['3'], description: 'Tomorrow' },
-        { keys: ['4'], description: 'Upcoming' },
-        { keys: ['5'], description: 'Completed' },
+        { keys: ['2'], description: 'Overdue' },
+        { keys: ['3'], description: 'Today' },
+        { keys: ['4'], description: 'Tomorrow' },
+        { keys: ['5'], description: 'Upcoming' },
+        { keys: ['6'], description: 'Completed' },
       ],
     },
     {
@@ -50,33 +50,11 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
       ],
     },
     {
-      title: 'Priority Filters',
-      shortcuts: [
-        { keys: ['Shift', 'H'], description: 'High Priority' },
-        { keys: ['Shift', 'M'], description: 'Medium Priority' },
-        { keys: ['Shift', 'L'], description: 'Low Priority' },
-      ],
-    },
-    {
       title: 'View & Display',
       shortcuts: [
         { keys: ['K'], description: 'Toggle Theme' },
         { keys: ['Shift', 'R'], description: 'Refresh' },
         { keys: ['?'], description: 'Show Shortcuts' },
-      ],
-    },
-    {
-      title: 'Navigation',
-      shortcuts: [
-        { keys: ['Shift', 'D'], description: 'Dashboard' },
-        { keys: ['Shift', 'T'], description: 'Tasks Page' },
-      ],
-    },
-    {
-      title: 'Form Actions',
-      shortcuts: [
-        { keys: ['Ctrl', 'Enter'], description: 'Submit Form' },
-        { keys: ['Esc'], description: 'Cancel/Close' },
       ],
     },
   ];
