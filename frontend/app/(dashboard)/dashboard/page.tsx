@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsDialog } from '@/components/shared/KeyboardShortcutsDialog';
@@ -16,31 +16,31 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Task } from '@/lib/types';
 import { Plus, CheckCircle2, Clock, AlertCircle, Search } from 'lucide-react';
-import { filterTasks } from '@/lib/utils';
+import { filterTasks, isTaskOverdue } from '@/lib/utils';
 import { isToday, isTomorrow, isPast, parseISO, startOfDay } from 'date-fns';
 import { Input } from '@/components/ui/input';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { tasks, isLoading, createTask, updateTask, deleteTask, toggleComplete } = useTasks();
+  const { tasks, isLoading: tasksLoading, createTask, updateTask, deleteTask, toggleComplete } = useTasks();
   const { toggleTheme } = useTheme();
   const [activeFilter, setActiveFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // CRITICAL FIX: Check email verification before rendering dashboard
   useEffect(() => {
-    if (!isLoading && user && !user.emailVerified) {
-      console.log('⚠️ Email not verified, redirecting from dashboard');
+    if (!authLoading && user && !user.emailVerified) {
       router.push('/verify-email-notice');
     }
-  }, [user, isLoading, router]);
+  }, [user, authLoading, router]);
 
   // Keyboard shortcuts
-  useKeyboardShortcuts([
+  const shortcuts = useMemo(() => [
     {
       key: 'n',
       callback: () => setIsCreateDialogOpen(true),
@@ -49,8 +49,7 @@ export default function DashboardPage() {
     {
       key: '/',
       callback: () => {
-        const searchInput = document.querySelector('input[placeholder="Search tasks..."]') as HTMLInputElement;
-        searchInput?.focus();
+        searchInputRef.current?.focus();
       },
       preventDefault: true,
     },
@@ -101,33 +100,32 @@ export default function DashboardPage() {
       callback: () => window.location.reload(),
       preventDefault: true,
     },
-  ]);
+  ], [toggleTheme, setActiveFilter, setIsCreateDialogOpen, setShowShortcutsDialog]);
+
+  useKeyboardShortcuts(shortcuts);
 
   // Calculate task counts
-  const taskCounts = {
+  const taskCounts = useMemo(() => ({
     all: tasks.length,
-    overdue: tasks.filter(t => 
-      t.deadline && 
-      isPast(startOfDay(parseISO(t.deadline))) && 
-      !isToday(parseISO(t.deadline)) && 
-      !t.completed
-    ).length,
+    overdue: tasks.filter(t => isTaskOverdue(t.deadline, t.completed)).length,
     today: tasks.filter(t => t.deadline && isToday(parseISO(t.deadline)) && !t.completed).length,
     tomorrow: tasks.filter(t => t.deadline && isTomorrow(parseISO(t.deadline)) && !t.completed).length,
     upcoming: tasks.filter(t => !t.completed).length,
     completed: tasks.filter(t => t.completed).length,
-  };
+  }), [tasks]);
 
   // Calculate stats
-  const stats = {
+  const stats = useMemo(() => ({
     total: tasks.length,
     completed: tasks.filter(t => t.completed).length,
     pending: tasks.filter(t => !t.completed).length,
     overdue: taskCounts.overdue,
     inProgress: tasks.filter(t => !t.completed && t.deadline && !isPast(parseISO(t.deadline))).length,
-  };
+  }), [tasks, taskCounts]);
 
   const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+  const overdueRate = stats.total > 0 ? Math.round((stats.overdue / stats.total) * 100) : 0;
+  const inProgressRate = stats.total > 0 ? 100 - completionRate - overdueRate : 0;
 
   // Filter tasks with enhanced search
   const filteredTasks = useMemo(() => {
@@ -168,27 +166,27 @@ export default function DashboardPage() {
     return filtered;
   }, [tasks, activeFilter, searchTerm]);
 
-  const handleCreateTask = (taskData: Partial<Task>) => {
+  const handleCreateTask = useCallback((taskData: Partial<Task>) => {
     if (editingTask) {
       updateTask({ id: editingTask.id, data: taskData });
       setEditingTask(null);
     } else {
       createTask(taskData);
     }
-  };
+  }, [editingTask, updateTask, createTask]);
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setIsCreateDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setIsCreateDialogOpen(false);
     setEditingTask(null);
-  };
+  }, []);
 
   // Show loading if data is loading OR if we're redirecting unverified users
-  if (isLoading || (user && !user.emailVerified)) {
+  if (tasksLoading || (user && !user.emailVerified)) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
@@ -262,10 +260,18 @@ export default function DashboardPage() {
                   {stats.completed} / {stats.total}
                 </Badge>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div className="flex w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-green-500 h-2 rounded-full transition-all" 
+                  className="bg-green-500 h-full transition-all" 
                   style={{ width: `${completionRate}%` }}
+                />
+                <div 
+                  className="bg-red-500 h-full transition-all" 
+                  style={{ width: `${overdueRate}%` }}
+                />
+                <div 
+                  className="bg-blue-500 h-full transition-all" 
+                  style={{ width: `${inProgressRate}%` }}
                 />
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2">
@@ -327,6 +333,7 @@ export default function DashboardPage() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
+                  ref={searchInputRef}
                   placeholder="Search tasks..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
