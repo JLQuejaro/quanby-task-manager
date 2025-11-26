@@ -279,11 +279,11 @@ export const tasksApi = {
   update: async (id: number, taskData: any) => {
     try {
       console.log(`✏️ Updating task ${id}...`, taskData);
-      const response = await api.put(`/tasks/${id}`, taskData);
+      const response = await api.patch(`/tasks/${id}`, taskData);
       console.log('✅ Task updated successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error(`❌ Failed to update task ${id}`);
+      console.error('❌ Failed to update task', id);
       throw error;
     }
   },
