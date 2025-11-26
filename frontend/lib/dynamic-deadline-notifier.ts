@@ -5,12 +5,12 @@
  * - 7+ days away: No automatic notifications (only manual reminders)
  * - 1-7 days away: Every 8 hours
  * - 6-24 hours away: Every 2.5 hours
- * - 2-6 hours away: Every 30 minutes
- * - 30min-2hrs away: Every 10 minutes
- * - Under 30min: Every 5 minutes (critical)
+ * - 1-6 hours away: Every 30 minutes
+ * - Under 1 hour: Specific Milestones (60m, 45m, 30m, 20m, 10m, 5m, 3m, 2m, 1m)
  * 
  * Features:
- * - Cooldown periods prevent spam
+ * - Cooldown periods prevent spam for long-term tasks
+ * - Milestone-based tracking for urgent tasks
  * - Short display duration (1-3 seconds based on urgency)
  * - Tracks last notification time per task
  * - Only notifies for incomplete, upcoming tasks
@@ -36,7 +36,11 @@ interface LastNotificationRecord {
   taskId: number;
   lastNotifiedAt: number; // timestamp
   urgencyLevel: string;
+  lastMilestone?: number; // Track the last specific milestone notified (e.g., 30, 10, 5)
 }
+
+// Specific milestones for notifications (in minutes)
+const URGENT_MILESTONES = [60, 45, 30, 20, 10, 5, 3, 2, 1];
 
 export class DynamicDeadlineNotifier {
   // Store last notification times to prevent duplicates
@@ -68,11 +72,11 @@ export class DynamicDeadlineNotifier {
    * Returns interval between notifications and display duration
    */
   private calculateNotificationTiming(minutesUntilDue: number): NotificationTiming {
-    // Critical: Under 30 minutes
+    // Critical: Under 30 minutes (Handled by milestones, but keeping for structure)
     if (minutesUntilDue <= 30) {
       return {
-        intervalMinutes: 5,
-        displayDuration: 3000, // 3 seconds - needs immediate attention
+        intervalMinutes: 0, // Milestone based
+        displayDuration: 5000, // 5 seconds - critical
         urgencyLevel: 'critical'
       };
     }
@@ -80,8 +84,8 @@ export class DynamicDeadlineNotifier {
     // High urgency: 30min - 2 hours
     if (minutesUntilDue <= 120) {
       return {
-        intervalMinutes: 10,
-        displayDuration: 2500, // 2.5 seconds
+        intervalMinutes: 0, // Milestone based for < 60
+        displayDuration: 4000, // 4 seconds
         urgencyLevel: 'high'
       };
     }
@@ -90,7 +94,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 360) {
       return {
         intervalMinutes: 30,
-        displayDuration: 2000, // 2 seconds
+        displayDuration: 3000, // 3 seconds
         urgencyLevel: 'medium'
       };
     }
@@ -99,7 +103,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 1440) {
       return {
         intervalMinutes: 150, // 2.5 hours
-        displayDuration: 2000, // 2 seconds
+        displayDuration: 2500, // 2.5 seconds
         urgencyLevel: 'medium'
       };
     }
@@ -108,7 +112,7 @@ export class DynamicDeadlineNotifier {
     if (minutesUntilDue <= 10080) {
       return {
         intervalMinutes: 480, // 8 hours
-        displayDuration: 1500, // 1.5 seconds
+        displayDuration: 2000, // 2 seconds
         urgencyLevel: 'low'
       };
     }
@@ -116,55 +120,30 @@ export class DynamicDeadlineNotifier {
     // No automatic notifications for tasks due in 7+ days
     return {
       intervalMinutes: Infinity,
-      displayDuration: 1000,
+      displayDuration: 1500,
       urgencyLevel: 'low'
     };
-  }
-
-  /**
-   * Check if enough time has passed since last notification (cooldown check)
-   * Prevents notification spam
-   */
-  private shouldNotify(taskId: number, requiredIntervalMinutes: number, currentUrgency: string): boolean {
-    const lastRecord = this.lastNotifications.get(taskId);
-    
-    if (!lastRecord) {
-      return true; // First notification for this task
-    }
-
-    const now = Date.now();
-    const minutesSinceLastNotification = (now - lastRecord.lastNotifiedAt) / (1000 * 60);
-    
-    // Check if cooldown period has passed
-    const cooldownPassed = minutesSinceLastNotification >= requiredIntervalMinutes;
-    
-    // Allow notification if urgency level increased (e.g., from medium to high)
-    const urgencyIncreased = this.hasUrgencyIncreased(lastRecord.urgencyLevel, currentUrgency);
-    
-    return cooldownPassed || urgencyIncreased;
-  }
-
-  /**
-   * Determine if urgency level has increased since last notification
-   */
-  private hasUrgencyIncreased(lastUrgency: string, currentUrgency: string): boolean {
-    const urgencyLevels = ['low', 'medium', 'high', 'critical'];
-    const lastIndex = urgencyLevels.indexOf(lastUrgency);
-    const currentIndex = urgencyLevels.indexOf(currentUrgency);
-    return currentIndex > lastIndex;
   }
 
   /**
    * Format the notification message based on time remaining
    */
   private formatMessage(minutesUntilDue: number, taskTitle: string): string {
-    if (minutesUntilDue <= 5) {
-      return `🔴 URGENT: "${taskTitle}" is due in ${Math.floor(minutesUntilDue)} minutes!`;
+    const minutes = Math.ceil(minutesUntilDue);
+    
+    if (minutes <= 1) {
+      return `🔴 HURRY: "${taskTitle}" is due in less than 1 minute!`;
     }
-    if (minutesUntilDue <= 30) {
-      return `⚠️ "${taskTitle}" is due in ${Math.floor(minutesUntilDue)} minutes`;
+    if (minutes <= 5) {
+      return `🔴 URGENT: "${taskTitle}" is due in ${minutes} minutes!`;
     }
-    if (minutesUntilDue <= 120) {
+    if (minutes <= 30) {
+      return `⚠️ "${taskTitle}" is due in ${minutes} minutes`;
+    }
+    if (minutes <= 60) {
+      return `⏰ "${taskTitle}" is due in ${minutes} minutes`;
+    }
+    if (minutes <= 120) {
       const hours = (minutesUntilDue / 60).toFixed(1);
       return `⏰ "${taskTitle}" is due in ${hours} hours`;
     }
@@ -191,7 +170,7 @@ export class DynamicDeadlineNotifier {
 
   /**
    * Main method: Check a task and send notification if needed
-   * Call this method periodically (e.g., every 1-5 minutes) for each task
+   * Call this method periodically (e.g., every 10-30 seconds) for each task
    */
   public checkAndNotify(task: Task): void {
     // Skip completed tasks
@@ -208,24 +187,92 @@ export class DynamicDeadlineNotifier {
     const dueTime = new Date(task.dueDate).getTime();
     const minutesUntilDue = (dueTime - now) / (1000 * 60);
 
-    // Skip overdue tasks (handle separately if needed)
+    // Handle overdue tasks (optional: notify once when overdue?)
     if (minutesUntilDue < 0) {
+      // Currently skipping overdue tasks as per original logic, 
+      // but could add an "Overdue" notification here if needed.
+      return; 
+    }
+
+    // Logic for Urgent Tasks (<= 60 minutes)
+    if (minutesUntilDue <= 60) {
+        this.checkMilestoneNotification(task, minutesUntilDue, now);
+        return;
+    }
+
+    // Logic for Standard Tasks (> 60 minutes)
+    this.checkStandardNotification(task, minutesUntilDue, now);
+  }
+
+  private checkMilestoneNotification(task: Task, minutesUntilDue: number, now: number) {
+    // Find the applicable milestone (the largest milestone that we have passed or are at)
+    // e.g., if 25 mins, applicable is 30 (if we want to notify "under 30") or 20 (next)?
+    // User wants: 60, 45, 30...
+    // If time is 55, we should have notified for 60.
+    // If time is 25, we should have notified for 30.
+    
+    // We iterate to find the smallest milestone that is >= minutesUntilDue.
+    // Wait, if we are at 25, we want to ensure we notified for 30.
+    // But if we *just* crossed 30 (e.g. 29.9), we notify.
+    // If we are way past 30 (e.g. 25), and haven't notified for 30, should we?
+    // Yes, effectively catching up, but the message will say "Due in 25 mins".
+    
+    // Find the smallest milestone M such that minutesUntilDue <= M
+    // Example: 59 mins. Milestones: ..., 60. M=60.
+    // Example: 25 mins. Milestones: ..., 30, ... M=30.
+    
+    // We want to trigger if we haven't triggered for this M yet.
+    
+    let applicableMilestone = 0;
+    // milestones are sorted descending: 60, 45, 30, ...
+    // We want the smallest one that is >= minutesUntilDue.
+    // Actually, we want to trigger for the *highest* priority milestone we've reached.
+    // If minutesUntilDue is 25, we are "under 30". The milestone is 30.
+    
+    // Let's try: Find the first milestone (descending) where minutesUntilDue <= milestone.
+    // e.g. 59 <= 60. Found 60.
+    // e.g. 25 <= 30. Found 30.
+    // e.g. 4 <= 5. Found 5.
+    
+    const milestone = URGENT_MILESTONES.find(m => minutesUntilDue <= m);
+    
+    if (!milestone) return; // Should not happen if < 60 and 60 is in milestones
+
+    const lastRecord = this.lastNotifications.get(task.id);
+    const lastMilestone = lastRecord?.lastMilestone || Infinity;
+
+    // If we are in a new milestone bracket (e.g., dropped from >60 to <=60, or >30 to <=30)
+    // We check if the current milestone is *smaller* than the last notified one.
+    // e.g. Last notified was 60. Current is 45 (minutesUntilDue=44). 45 < 60. Notify.
+    
+    if (milestone < lastMilestone) {
+        const urgencyLevel = minutesUntilDue <= 30 ? 'critical' : 'high';
+        const message = this.formatMessage(minutesUntilDue, task.title);
+        const type = this.getNotificationType(urgencyLevel);
+        const displayDuration = minutesUntilDue <= 10 ? 5000 : 4000;
+
+        this.notifyCallback(type, 'Deadline Approaching', message, task.id, displayDuration);
+        
+        this.lastNotifications.set(task.id, {
+            taskId: task.id,
+            lastNotifiedAt: now,
+            urgencyLevel,
+            lastMilestone: milestone
+        });
+    }
+  }
+
+  private checkStandardNotification(task: Task, minutesUntilDue: number, now: number) {
+    const timing = this.calculateNotificationTiming(minutesUntilDue);
+    
+    // Basic check if interval passed
+    if (!this.shouldNotifyStandard(task.id, timing.intervalMinutes, timing.urgencyLevel, now)) {
       return;
     }
 
-    // Calculate timing parameters
-    const timing = this.calculateNotificationTiming(minutesUntilDue);
-
-    // Check cooldown period
-    if (!this.shouldNotify(task.id, timing.intervalMinutes, timing.urgencyLevel)) {
-      return; // Too soon since last notification
-    }
-
-    // Generate notification message
     const message = this.formatMessage(minutesUntilDue, task.title);
     const notificationType = this.getNotificationType(timing.urgencyLevel);
 
-    // Send notification via callback
     this.notifyCallback(
       notificationType,
       'Task Deadline Reminder',
@@ -234,12 +281,33 @@ export class DynamicDeadlineNotifier {
       timing.displayDuration
     );
 
-    // Record this notification
     this.lastNotifications.set(task.id, {
       taskId: task.id,
       lastNotifiedAt: now,
-      urgencyLevel: timing.urgencyLevel
+      urgencyLevel: timing.urgencyLevel,
+      lastMilestone: Infinity // Reset milestone tracking if we go back to standard (e.g. date changed)
     });
+  }
+
+  private shouldNotifyStandard(taskId: number, requiredIntervalMinutes: number, currentUrgency: string, now: number): boolean {
+    const lastRecord = this.lastNotifications.get(taskId);
+    if (!lastRecord) return true;
+
+    const minutesSinceLastNotification = (now - lastRecord.lastNotifiedAt) / (1000 * 60);
+    const cooldownPassed = minutesSinceLastNotification >= requiredIntervalMinutes;
+    const urgencyIncreased = this.hasUrgencyIncreased(lastRecord.urgencyLevel, currentUrgency);
+
+    return cooldownPassed || urgencyIncreased;
+  }
+
+  /**
+   * Determine if urgency level has increased since last notification
+   */
+  private hasUrgencyIncreased(lastUrgency: string, currentUrgency: string): boolean {
+    const urgencyLevels = ['low', 'medium', 'high', 'critical'];
+    const lastIndex = urgencyLevels.indexOf(lastUrgency);
+    const currentIndex = urgencyLevels.indexOf(currentUrgency);
+    return currentIndex > lastIndex;
   }
 
   /**

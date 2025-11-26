@@ -131,12 +131,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
     }
-    // Check tasks every 2 minutes
+    // Check tasks every 10 seconds
     monitoringIntervalRef.current = setInterval(() => {
       if (notifierRef.current) {
         notifierRef.current.checkMultipleTasks(tasks);
       }
-    }, 120000); // 2 minutes
+    }, 10000); // 10 seconds
     // Also check immediately
     if (notifierRef.current) {
       notifierRef.current.checkMultipleTasks(tasks);
