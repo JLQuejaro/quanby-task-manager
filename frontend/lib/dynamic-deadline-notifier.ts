@@ -187,10 +187,9 @@ export class DynamicDeadlineNotifier {
     const dueTime = new Date(task.dueDate).getTime();
     const minutesUntilDue = (dueTime - now) / (1000 * 60);
 
-    // Handle overdue tasks (optional: notify once when overdue?)
+    // Handle overdue tasks
     if (minutesUntilDue < 0) {
-      // Currently skipping overdue tasks as per original logic, 
-      // but could add an "Overdue" notification here if needed.
+      this.checkOverdueNotification(task, minutesUntilDue, now);
       return; 
     }
 
@@ -261,6 +260,42 @@ export class DynamicDeadlineNotifier {
             lastMilestone: milestone
         });
     }
+  }
+
+  private checkOverdueNotification(task: Task, minutesUntilDue: number, now: number) {
+    // check if we have already notified that it is overdue
+    // We use a special milestone '-1' or similar to indicate "Overdue" has been triggered.
+    // Or we just check if urgencyLevel was 'critical' and now it's 'overdue'?
+    
+    // Let's use a distinct urgency level for the record: 'overdue_notified'
+    
+    const lastRecord = this.lastNotifications.get(task.id);
+    
+    // If we already marked it as overdue notified, don't spam (unless we want periodic reminders?)
+    // For now, notify ONCE when it becomes overdue.
+    if (lastRecord && lastRecord.urgencyLevel === 'overdue_notified') {
+        return;
+    }
+
+    // Trigger the notification
+    const message = `🔴 OVERDUE: "${task.title}" was due ${this.formatOverdueTime(Math.abs(minutesUntilDue))} ago!`;
+    const type: NotificationType = 'overdue_alert';
+    const displayDuration = 3000; // 3 seconds for the big "It's Overdue" alert
+
+    this.notifyCallback(type, 'Task Overdue', message, task.id, displayDuration);
+    
+    this.lastNotifications.set(task.id, {
+        taskId: task.id,
+        lastNotifiedAt: now,
+        urgencyLevel: 'overdue_notified',
+        lastMilestone: -1
+    });
+  }
+
+  private formatOverdueTime(minutes: number): string {
+      if (minutes < 60) return `${Math.floor(minutes)} mins`;
+      if (minutes < 1440) return `${(minutes / 60).toFixed(1)} hours`;
+      return `${Math.floor(minutes / 1440)} days`;
   }
 
   private checkStandardNotification(task: Task, minutesUntilDue: number, now: number) {
