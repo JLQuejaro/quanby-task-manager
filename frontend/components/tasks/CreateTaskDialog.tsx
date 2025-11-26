@@ -46,6 +46,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [pendingTaskData, setPendingTaskData] = useState<Partial<Task> | null>(null);
 
   useEffect(() => {
@@ -67,6 +68,35 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
       setDeadlineTime('');
     }
   }, [editTask, open]);
+
+  const hasUnsavedChanges = () => {
+    const currentTitle = title;
+    const currentDescription = description || '';
+    const currentPriority = priority;
+    const currentDate = deadlineDate;
+    const currentTime = deadlineTime;
+
+    if (editTask) {
+      const initialDate = editTask.deadline ? new Date(editTask.deadline).toISOString().split('T')[0] : '';
+      const initialTime = editTask.deadline ? new Date(editTask.deadline).toTimeString().slice(0, 5) : '';
+      
+      return (
+        currentTitle !== editTask.title ||
+        currentDescription !== (editTask.description || '') ||
+        currentPriority !== editTask.priority ||
+        currentDate !== initialDate ||
+        currentTime !== initialTime
+      );
+    } else {
+      return (
+        currentTitle !== '' ||
+        currentDescription !== '' ||
+        currentPriority !== 'medium' ||
+        currentDate !== '' ||
+        currentTime !== ''
+      );
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +124,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
     } else {
       // If creating new task, submit directly
       onSubmit(taskData);
-      handleClose();
+      discardChanges();
     }
   };
 
@@ -103,7 +133,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
       onSubmit(pendingTaskData);
       setShowConfirmDialog(false);
       setPendingTaskData(null);
-      handleClose();
+      discardChanges();
     }
   };
 
@@ -112,7 +142,18 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
     setPendingTaskData(null);
   };
 
-  const handleClose = () => {
+  const handleClose = (isOpen?: boolean) => {
+    if (isOpen === true) return;
+    
+    if (hasUnsavedChanges()) {
+      setShowDiscardDialog(true);
+    } else {
+      discardChanges();
+    }
+  };
+
+  const discardChanges = () => {
+    setShowDiscardDialog(false);
     setTitle('');
     setDescription('');
     setPriority('medium');
@@ -233,7 +274,7 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 className="rounded-xl dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
               >
                 Cancel
@@ -256,7 +297,6 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation Dialog for Updates */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <AlertDialogHeader>
@@ -279,6 +319,34 @@ export function CreateTaskDialog({ open, onClose, onSubmit, editTask }: CreateTa
               className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
             >
               Yes, Update Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Discard Changes Confirmation Dialog */}
+      <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
+              Discard Changes?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+              You have unsaved changes. Are you sure you want to discard them?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setShowDiscardDialog(false)}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              Keep Editing
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={discardChanges}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white"
+            >
+              Yes, Discard Changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
