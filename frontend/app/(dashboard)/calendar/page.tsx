@@ -279,7 +279,7 @@ export default function CalendarPage() {
                       variant="outline"
                       size="sm"
                       onClick={goToPreviousMonth}
-                      className="rounded-xl"
+                      className="rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-200"
                       aria-label="Previous month"
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -288,7 +288,7 @@ export default function CalendarPage() {
                       variant="outline"
                       size="sm"
                       onClick={goToToday}
-                      className="rounded-xl"
+                      className="rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-200"
                       aria-label="Today"
                     >
                       Today
@@ -297,7 +297,7 @@ export default function CalendarPage() {
                       variant="outline"
                       size="sm"
                       onClick={goToNextMonth}
-                      className="rounded-xl"
+                      className="rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-200"
                       aria-label="Next month"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -326,15 +326,15 @@ export default function CalendarPage() {
                 <div className="mt-4 flex items-center gap-4 text-sm flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-[#4169E1]"></div>
-                    <span className="dark:text-gray-300">Selected</span>
+                    <span className="text-gray-700 dark:text-gray-300">Selected</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-100 border-2 border-blue-500"></div>
-                    <span className="dark:text-gray-300">Today</span>
+                    <div className="w-3 h-3 rounded-full bg-blue-100 dark:bg-blue-900 border-2 border-blue-500"></div>
+                    <span className="text-gray-700 dark:text-gray-300">Today</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-                    <span className="dark:text-gray-300">Has Tasks</span>
+                    <div className="w-1 h-1 bg-gray-600 dark:bg-gray-400 rounded-full"></div>
+                    <span className="text-gray-700 dark:text-gray-300">Has Tasks</span>
                   </div>
                 </div>
               </CardContent>
@@ -386,19 +386,19 @@ export default function CalendarPage() {
           {/* Selected Date Tasks */}
           <div className="space-y-6">
             <Card className="rounded-2xl min-h-[795px]">
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col gap-3">
                   <CardTitle className="text-lg dark:text-white">
                     {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                   </CardTitle>
                   <Button
                     size="sm"
                     onClick={() => setIsCreateDialogOpen(true)}
-                    className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl"
+                    className="bg-[#4169E1] hover:bg-[#3558CC] rounded-xl w-full"
                     aria-label="Add task"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Add
+                    Add Task
                   </Button>
                 </div>
               </CardHeader>
@@ -410,7 +410,7 @@ export default function CalendarPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="mt-2 rounded-xl"
+                        className="mt-2 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-200"
                         onClick={() => setIsCreateDialogOpen(true)}
                         aria-label="Add first task"
                       >
