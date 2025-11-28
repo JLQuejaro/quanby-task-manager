@@ -104,6 +104,7 @@ export class AuthService {
         name: user.name,
         authProvider: user.authProvider || 'email',
         emailVerified: false,
+        createdAt: user.createdAt.toISOString(),
       },
       message: 'Registration successful. Please verify your email.',
     };
@@ -213,6 +214,7 @@ export class AuthService {
         name: user.name,
         authProvider: user.authProvider || 'email',
         emailVerified: user.emailVerified || false,
+        createdAt: user.createdAt.toISOString(),
       },
     };
   }

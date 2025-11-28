@@ -31,6 +31,7 @@ export declare class AuthService {
             name: string;
             authProvider: string;
             emailVerified: boolean;
+            createdAt: string;
         };
         message: string;
     }>;
@@ -42,6 +43,7 @@ export declare class AuthService {
             name: string;
             authProvider: string;
             emailVerified: boolean;
+            createdAt: string;
         };
     }>;
     validateUser(userId: number): Promise<{

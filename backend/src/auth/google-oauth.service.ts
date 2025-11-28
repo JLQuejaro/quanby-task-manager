@@ -381,6 +381,7 @@ export class GoogleOAuthService {
         name: existingUser.name,
         emailVerified: existingUser.email_verified,
         authProvider: 'google',
+        createdAt: existingUser.created_at ? existingUser.created_at.toISOString() : new Date().toISOString(),
       },
     };
   }
@@ -629,6 +630,7 @@ export class GoogleOAuthService {
             name: existingUser.name,
             emailVerified: true,
             authProvider: 'google',
+            createdAt: existingUser.created_at.toISOString(),
           },
         };
       }
@@ -665,6 +667,7 @@ export class GoogleOAuthService {
           name: newUser.name,
           emailVerified: true,
           authProvider: 'google',
+          createdAt: newUser.created_at.toISOString(),
         },
       };
 
@@ -813,7 +816,7 @@ export class GoogleOAuthService {
     const result = await this.pool.query(
       `INSERT INTO users (email, name, google_id, auth_provider, email_verified, password)
        VALUES ($1, $2, $3, 'google', TRUE, NULL)
-       RETURNING id, email, name, email_verified, auth_provider`,
+       RETURNING id, email, name, email_verified, auth_provider, created_at`,
       [registration.email, registration.name, registration.google_id]
     );
 

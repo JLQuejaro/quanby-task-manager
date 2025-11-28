@@ -87,7 +87,7 @@ export default function ProfilePage() {
               <div className="flex-1">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Member Since</p>
                 <p className="text-base font-medium text-gray-900 dark:text-gray-100">
-                  {user?.createdAt ? format(new Date(user.createdAt), 'MMMM d, yyyy') : format(new Date(), 'MMMM d, yyyy')}
+                  {user?.createdAt ? format(new Date(user.createdAt), 'MMMM d, yyyy') : 'Unknown'}
                 </p>
               </div>
             </div>

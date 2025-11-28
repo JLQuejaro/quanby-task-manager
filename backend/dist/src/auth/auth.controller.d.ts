@@ -20,6 +20,7 @@ export declare class AuthController {
             name: string;
             authProvider: string;
             emailVerified: boolean;
+            createdAt: string;
         };
         message: string;
     }>;
@@ -31,6 +32,7 @@ export declare class AuthController {
             name: string;
             authProvider: string;
             emailVerified: boolean;
+            createdAt: string;
         };
     }>;
     googleCallback(callbackDto: GoogleOAuthCallbackDto, ip: string, userAgent: string): Promise<import("./google-oauth.service").GoogleAuthResult>;
