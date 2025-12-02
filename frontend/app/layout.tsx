@@ -1,5 +1,4 @@
 'use client';
-
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -32,9 +31,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [queryClient] = useState(() => new QueryClient());
-
+  
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>Quanby Task Manager</title>
+        <meta name="description" content="Task Manager For Quanby" />
+      </head>
       <body className={inter.className}>
         <QueryClientProvider client={queryClient}>
           <Providers>
