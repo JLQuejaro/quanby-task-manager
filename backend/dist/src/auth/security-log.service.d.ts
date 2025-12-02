@@ -12,6 +12,7 @@ export declare class SecurityLogService {
     constructor();
     log(data: SecurityLogData): Promise<void>;
     getUserSecurityLogs(userId: number, limit?: number): Promise<any[]>;
+    getConsecutiveFailedPasswordChanges(userId: number): Promise<number>;
     cleanup(): Promise<void>;
 }
 export {};

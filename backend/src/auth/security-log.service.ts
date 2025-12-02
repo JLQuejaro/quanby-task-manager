@@ -59,6 +59,36 @@ export class SecurityLogService {
     }
   }
 
+  async getConsecutiveFailedPasswordChanges(userId: number): Promise<number> {
+    try {
+      // Fetch the last 10 events related to password changes to calculate streak
+      const result = await this.pool.query(
+        `SELECT event_type 
+         FROM security_logs 
+         WHERE user_id = $1 
+           AND event_type IN ('password_change', 'password_change_failed') 
+         ORDER BY created_at DESC 
+         LIMIT 10`,
+        [userId]
+      );
+
+      let count = 0;
+      for (const row of result.rows) {
+        if (row.event_type === 'password_change_failed') {
+          count++;
+        } else {
+          // Break sequence if we hit a success
+          break;
+        }
+      }
+
+      return count;
+    } catch (error) {
+      console.error('Error counting consecutive password change failures:', error);
+      return 0;
+    }
+  }
+
   async cleanup(): Promise<void> {
     try {
       await this.pool.query(

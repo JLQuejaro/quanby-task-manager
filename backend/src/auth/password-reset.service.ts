@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/
 import { Pool } from 'pg';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { sendPasswordResetEmail, sendPasswordResetSuccessEmail } from '../lib/email';
+import { sendPasswordResetEmail, sendPasswordResetSuccessEmail, sendAccountLockedEmail } from '../lib/email';
 
 @Injectable()
 export class PasswordResetService {
@@ -12,6 +12,28 @@ export class PasswordResetService {
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
+  }
+
+  async lockAccountAndSendResetEmail(userId: number, email: string, name: string): Promise<void> {
+    try {
+      // Generate reset token
+      const resetToken = this.generateSecureToken();
+      const hashedToken = await this.hashToken(resetToken);
+      const expiresAt = this.getTokenExpiry(
+        parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1')
+      );
+
+      // Store reset token
+      await this.createResetToken(userId, hashedToken, expiresAt);
+
+      // Send account locked email
+      await sendAccountLockedEmail(email, resetToken, name);
+
+      console.log(`🚨 Account locked email sent to ${email}`);
+    } catch (error) {
+      console.error('Error in lockAccountAndSendResetEmail:', error);
+      // Don't throw here to ensure the logout process continues in the caller
+    }
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {

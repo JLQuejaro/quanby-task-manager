@@ -2,14 +2,16 @@ import { JwtService } from '@nestjs/jwt';
 import { RegisterDto, LoginDto } from './dto/register.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { SecurityLogService } from './security-log.service';
+import { PasswordResetService } from './password-reset.service';
 import { RateLimitService } from './rate-limit.service';
 export declare class AuthService {
     private jwtService;
     private emailVerificationService;
     private securityLogService;
     private rateLimitService;
+    private passwordResetService;
     private pool;
-    constructor(jwtService: JwtService, emailVerificationService: EmailVerificationService, securityLogService: SecurityLogService, rateLimitService: RateLimitService);
+    constructor(jwtService: JwtService, emailVerificationService: EmailVerificationService, securityLogService: SecurityLogService, rateLimitService: RateLimitService, passwordResetService: PasswordResetService);
     findByEmail(email: string): Promise<{
         id: number;
         email: string;

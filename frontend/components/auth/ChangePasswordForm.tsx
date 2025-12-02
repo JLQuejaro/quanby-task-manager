@@ -87,6 +87,14 @@ export function ChangePasswordForm() {
 
       const data = await response.json();
 
+      // Handle 401 (Unauthorized) - Trigger logout (e.g. Account Locked or Session Expired)
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login?error=' + encodeURIComponent(data.message || 'Session expired');
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.message || 'Failed to change password');
       }
@@ -107,13 +115,9 @@ export function ChangePasswordForm() {
     } catch (error: any) {
       console.error('Change password error:', error);
       
-      if (error.message.includes('Too many attempts')) {
-        setError('Too many attempts. Please try again later.');
-      } else if (error.message.includes('incorrect')) {
-        setError('Current password is incorrect');
-      } else {
-        setError(error.message || 'Failed to change password');
-      }
+      // Display the error message from the backend directly
+      // This ensures users see "X attempts remaining" or "Account locked" messages
+      setError(error.message || 'Failed to change password');
 
       addNotification(
         'password_change_failed',

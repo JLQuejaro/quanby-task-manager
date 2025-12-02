@@ -9,6 +9,7 @@ import { Pool } from 'pg';
 import { RegisterDto, LoginDto } from './dto/register.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { SecurityLogService } from './security-log.service';
+import { PasswordResetService } from './password-reset.service';
 import { RateLimitService } from './rate-limit.service';
 // ✅ FIXED: Import both email functions
 import { sendPasswordChangedEmail, sendPasswordSetEmail, sendFailedAccountDeletionEmail } from '../lib/email';
@@ -22,6 +23,7 @@ export class AuthService {
     private emailVerificationService: EmailVerificationService,
     private securityLogService: SecurityLogService,
     private rateLimitService: RateLimitService,
+    private passwordResetService: PasswordResetService,
   ) {
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -340,7 +342,25 @@ export class AuthService {
         userAgent,
         metadata: { reason: 'Incorrect current password' },
       });
-      throw new UnauthorizedException('Current password is incorrect');
+
+      // Check for consecutive failures
+      const failedAttempts = await this.securityLogService.getConsecutiveFailedPasswordChanges(userId);
+      const maxAttempts = 3;
+
+      if (failedAttempts >= maxAttempts) {
+        console.log(`🚨 Account locked for user ${userId} due to too many failed password attempts`);
+        
+        // Revoke all sessions (Logout)
+        await this.revokeAllUserSessions(userId);
+        
+        // Send email with reset link
+        await this.passwordResetService.lockAccountAndSendResetEmail(userId, user.email, user.name);
+        
+        throw new UnauthorizedException('Too many failed attempts. Your account has been locked for security. Please check your email to reset your password.');
+      }
+
+      const remaining = maxAttempts - failedAttempts;
+      throw new BadRequestException(`Current password is incorrect. You have ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining before your account is locked.`);
     }
 
     if (newPassword !== confirmPassword) {

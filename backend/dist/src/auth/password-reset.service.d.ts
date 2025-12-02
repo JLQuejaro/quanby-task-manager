@@ -1,6 +1,7 @@
 export declare class PasswordResetService {
     private pool;
     constructor();
+    lockAccountAndSendResetEmail(userId: number, email: string, name: string): Promise<void>;
     forgotPassword(email: string): Promise<{
         message: string;
     }>;

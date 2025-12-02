@@ -38,6 +38,7 @@ exports.sendGoogleVerificationEmail = sendGoogleVerificationEmail;
 exports.sendPasswordSetEmail = sendPasswordSetEmail;
 exports.sendPasswordChangedEmail = sendPasswordChangedEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
+exports.sendAccountLockedEmail = sendAccountLockedEmail;
 exports.sendFailedAccountDeletionEmail = sendFailedAccountDeletionEmail;
 exports.sendPasswordResetSuccessEmail = sendPasswordResetSuccessEmail;
 const nodemailer = __importStar(require("nodemailer"));
@@ -342,6 +343,47 @@ async function sendPasswordResetEmail(email, resetToken, userName) {
         html: emailTemplate(content),
     });
     console.log('✅ Password reset email sent to:', email);
+}
+async function sendAccountLockedEmail(email, resetToken, userName) {
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const time = new Date().toLocaleString();
+    const content = `
+    <div class="greeting">Hi${userName ? ` ${userName}` : ''},</div>
+    <div class="message">
+      We detected <strong>3 consecutive failed attempts</strong> to change your password on ${time}.
+    </div>
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 8px;">
+      <strong style="color: #991b1b;">🔒 Account Locked for Security</strong><br>
+      <span style="color: #b91c1c; font-size: 14px;">
+        To protect your account, we have automatically logged you out and locked your account.
+      </span>
+    </div>
+    <div class="message">
+      <strong>Was this you?</strong><br>
+      If you were trying to change your password, please use the button below to safely reset it.
+    </div>
+    <div class="message">
+      <strong>Wasn't you?</strong><br>
+      Someone might be trying to access your account. This link will help you secure your account with a new password.
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${resetUrl}" class="button" style="background-color: #ef4444;">Reset Password & Unlock</a>
+    </div>
+    <div class="link-container">
+      <div class="link-label">Or copy and paste this link in your browser:</div>
+      <a href="${resetUrl}" class="link-text">${resetUrl}</a>
+    </div>
+    <div class="warning-box">
+      ⏱️ <strong>This link expires in ${process.env.PASSWORD_RESET_TOKEN_EXPIRY || 1} hour(s).</strong>
+    </div>
+  `;
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM,
+        to: email,
+        subject: '🚨 Account Locked: Multiple Failed Password Attempts',
+        html: emailTemplate(content),
+    });
+    console.log('✅ Account locked email sent to:', email);
 }
 async function sendFailedAccountDeletionEmail(email, userName) {
     const resetUrl = `${process.env.FRONTEND_URL}/forgot-password`;

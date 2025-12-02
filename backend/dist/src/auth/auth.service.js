@@ -53,14 +53,16 @@ const crypto = __importStar(require("crypto"));
 const pg_1 = require("pg");
 const email_verification_service_1 = require("./email-verification.service");
 const security_log_service_1 = require("./security-log.service");
+const password_reset_service_1 = require("./password-reset.service");
 const rate_limit_service_1 = require("./rate-limit.service");
 const email_1 = require("../lib/email");
 let AuthService = class AuthService {
-    constructor(jwtService, emailVerificationService, securityLogService, rateLimitService) {
+    constructor(jwtService, emailVerificationService, securityLogService, rateLimitService, passwordResetService) {
         this.jwtService = jwtService;
         this.emailVerificationService = emailVerificationService;
         this.securityLogService = securityLogService;
         this.rateLimitService = rateLimitService;
+        this.passwordResetService = passwordResetService;
         this.pool = new pg_1.Pool({
             connectionString: process.env.DATABASE_URL,
         });
@@ -300,7 +302,16 @@ let AuthService = class AuthService {
                 userAgent,
                 metadata: { reason: 'Incorrect current password' },
             });
-            throw new common_1.UnauthorizedException('Current password is incorrect');
+            const failedAttempts = await this.securityLogService.getConsecutiveFailedPasswordChanges(userId);
+            const maxAttempts = 3;
+            if (failedAttempts >= maxAttempts) {
+                console.log(`🚨 Account locked for user ${userId} due to too many failed password attempts`);
+                await this.revokeAllUserSessions(userId);
+                await this.passwordResetService.lockAccountAndSendResetEmail(userId, user.email, user.name);
+                throw new common_1.UnauthorizedException('Too many failed attempts. Your account has been locked for security. Please check your email to reset your password.');
+            }
+            const remaining = maxAttempts - failedAttempts;
+            throw new common_1.BadRequestException(`Current password is incorrect. You have ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining before your account is locked.`);
         }
         if (newPassword !== confirmPassword) {
             throw new common_1.BadRequestException('New passwords do not match');
@@ -438,6 +449,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [jwt_1.JwtService,
         email_verification_service_1.EmailVerificationService,
         security_log_service_1.SecurityLogService,
-        rate_limit_service_1.RateLimitService])
+        rate_limit_service_1.RateLimitService,
+        password_reset_service_1.PasswordResetService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

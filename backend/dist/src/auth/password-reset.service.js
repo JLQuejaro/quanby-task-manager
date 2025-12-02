@@ -54,6 +54,19 @@ let PasswordResetService = class PasswordResetService {
             connectionString: process.env.DATABASE_URL,
         });
     }
+    async lockAccountAndSendResetEmail(userId, email, name) {
+        try {
+            const resetToken = this.generateSecureToken();
+            const hashedToken = await this.hashToken(resetToken);
+            const expiresAt = this.getTokenExpiry(parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1'));
+            await this.createResetToken(userId, hashedToken, expiresAt);
+            await (0, email_1.sendAccountLockedEmail)(email, resetToken, name);
+            console.log(`🚨 Account locked email sent to ${email}`);
+        }
+        catch (error) {
+            console.error('Error in lockAccountAndSendResetEmail:', error);
+        }
+    }
     async forgotPassword(email) {
         try {
             const userResult = await this.pool.query('SELECT id, name, email, password FROM users WHERE email = $1', [email]);
